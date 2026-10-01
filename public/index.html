@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Alex Razkevich</title>
-  <meta name="description" content="Notes on infrastructure, GCP, reliability, and system design." />
+  <meta name="description" content="Notes on infrastructure, reliability, and system design — from a staff infrastructure engineer." />
   <meta name="color-scheme" content="light dark" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
@@ -13,13 +13,15 @@
     <header class="site-header">
       <div class="site-brand">
         <p class="site-title"><a href="/">Alex Razkevich</a></p>
-        <p class="site-tag">Staff Infrastructure Engineer · GCP · reliability · system design</p>
+        <p class="site-tag">Staff Infrastructure Engineer · systems · reliability</p>
       </div>
       <nav class="nav" aria-label="Primary">
-        <a href="/">Posts</a>
-        <a href="https://github.com/razkevich">GitHub</a>
+        <a href="/" aria-current="page">Posts</a>
+        <a href="/about/">About</a>
+        <a href="https://github.com/razkevich" rel="me">GitHub</a>
       </nav>
     </header>
+    <p class="intro">Notes on <strong>infrastructure</strong>, <strong>reliability</strong>, and the trade-offs that show up when you run software in production.</p>
     <p class="section-label">Writing</p>
     <ul class="feed">
       <li>
@@ -248,9 +250,12 @@
       </li>
     </ul>
 
-    <footer class="site-footer">
+        <footer class="site-footer">
       <span>© Alex Razkevich</span>
-      <span><a href="https://github.com/razkevich">GitHub</a></span>
+      <span class="footer-links">
+        <a href="/about/">About</a>
+        <a href="https://github.com/razkevich" rel="me">GitHub</a>
+      </span>
     </footer>
   </div>
 </body>

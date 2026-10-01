@@ -10,14 +10,15 @@
 </head>
 <body>
   <div class="wrap">
-    <header class="site-header">
+        <header class="site-header">
       <div class="site-brand">
         <p class="site-title"><a href="/">Alex Razkevich</a></p>
-        <p class="site-tag">Staff Infrastructure Engineer · GCP · reliability · system design</p>
+        <p class="site-tag">Staff Infrastructure Engineer · systems · reliability</p>
       </div>
       <nav class="nav" aria-label="Primary">
         <a href="/">Posts</a>
-        <a href="https://github.com/razkevich">GitHub</a>
+        <a href="/about/">About</a>
+        <a href="https://github.com/razkevich" rel="me">GitHub</a>
       </nav>
     </header>
 
@@ -76,9 +77,12 @@
       <p>Distributed locking is powerful but complex. <strong>Match lock type to guarantees</strong>: use consensus-backed tools (ZooKeeper, etcd, Hazelcast CP) when you need strict safety, and simpler locks (Redis, advisory locks) when you can tolerate relaxed semantics. <strong>Use fencing tokens</strong> whenever locks expire, so stale clients cannot corrupt state. Always incorporate <strong>timeouts and TTLs</strong> on locks and retries, and plan for failures (e.g. auto-release on crash, cleanup of orphaned locks). Consider lock granularity and <strong>reentrancy</strong> as needed. Design for the worst (net splits, slow clocks) and remember that if a lock will break your system on failure, you may need to re-think the design. Wherever possible, prefer idempotent operations or higher-level coordination (leader election, sequencers) to reduce reliance on distributed mutexes.</p>
     </article>
 
-    <footer class="site-footer">
+        <footer class="site-footer">
       <span>© Alex Razkevich</span>
-      <span><a href="https://github.com/razkevich">GitHub</a></span>
+      <span class="footer-links">
+        <a href="/about/">About</a>
+        <a href="https://github.com/razkevich" rel="me">GitHub</a>
+      </span>
     </footer>
   </div>
 </body>

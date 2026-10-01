@@ -8,6 +8,7 @@ Live site: https://razkevich.com
 
 - `public/` — static site files served by Cloudflare Workers Assets
 - `public/index.html` — homepage and post feed
+- `public/about/` — short about / self-presentation
 - `public/posts.json` — post metadata used as the feed source
 - `public/posts/<slug>/index.html` — individual post pages
 - `wrangler.toml` — Worker and static-assets configuration
