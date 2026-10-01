@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kubernetes Resource Hierarchy Guide · Alex Razkevich</title>
+  <meta name="description" content="Kubernetes orchestrates containerized applications through a rich ecosystem of interconnected resources. Understanding how these resources relate to each other " />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <div class="site-brand">
+        <p class="site-title"><a href="/">Alex Razkevich</a></p>
+        <p class="site-tag">Staff Infrastructure Engineer · GCP · reliability · system design</p>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <a href="/">Posts</a>
+        <a href="https://github.com/razkevich">GitHub</a>
+      </nav>
+    </header>
+
+    <p class="back"><a href="/">← All posts</a></p>
+    <h1 class="page-title">Kubernetes Resource Hierarchy Guide</h1>
+    <p class="meta">August 1, 2025</p>
+    <article class="prose">
+      <p>Kubernetes orchestrates containerized applications through a rich ecosystem of interconnected resources. Understanding how these resources relate to each other is crucial for effective cluster management and application deployment.</p>
+      <p>This guide organizes Kubernetes resources into seven functional categories, each with detailed diagrams showing hierarchical relationships and dependencies. Rather than treating resources in isolation, these diagrams reveal the control flows and data paths that make Kubernetes work — from how Deployments manage ReplicaSets to create Pods, to how Services discover endpoints and route traffic.</p>
+      <p>Each category includes both architectural context and practical insights to help you understand not just <em>what</em> each resource does, but <em>how</em> they work together to create resilient, scalable applications.</p>
+      <h2>🔴 Workloads &amp; Scheduling</h2>
+      <p>Core application deployment and job execution components.</p>
+      <p>Understanding workload hierarchy is fundamental to Kubernetes mastery. At its heart, Kubernetes follows a controller pattern where higher-level abstractions manage lower-level resources. The Pod serves as the atomic unit — a wrapper around one or more containers that share storage and network. However, you rarely create Pods directly in production.</p>
+      <p>Instead, you use controllers like Deployments for stateless applications or StatefulSets for stateful services. These controllers provide crucial capabilities: Deployments manage ReplicaSets behind the scenes to ensure your desired number of Pod replicas are running, while also enabling zero-downtime rolling updates. StatefulSets, on the other hand, directly manage Pods with stable network identities and ordered deployment — essential for databases and other stateful workloads.</p>
+      <p>DaemonSets represent a different paradigm entirely, ensuring exactly one Pod runs on each node (or a subset of nodes). This makes them perfect for node-level services like log collectors, monitoring agents, or network plugins that need to run cluster-wide.</p>
+      <p>The auto-scaling layer adds intelligence to your workloads. The Horizontal Pod Autoscaler (HPA) monitors metrics and scales the number of replicas, while the Vertical Pod Autoscaler (VPA) adjusts resource requests and limits. Both work through the workload controllers rather than manipulating Pods directly, maintaining the system’s hierarchical integrity.</p>
+      <img alt="" loading="lazy" src="images/1_fAFdYhYCmlSRraJzKp8eEw.png" />
+      <h2>Batch Processing Hierarchy</h2>
+      <img alt="" loading="lazy" src="images/1_WdN-xn2evOAi84sTgy8HfA.png" />
+      <p><strong>Job Execution Patterns:</strong></p>
+      <p>While the diagram shows the basic Job → Pod relationship, Jobs offer flexible execution patterns to handle different workload requirements:</p>
+      <ul><li><strong>Sequential Jobs</strong> (default): Runs one pod at a time until the specified number of completions is reached. This is ideal for tasks that must be processed in order or when resource constraints require limiting concurrent execution.</li><li><strong>Parallel Jobs</strong>: Configure multiple pods to run simultaneously using the <code>parallelism</code> setting. For example, setting <code>parallelism: 3</code> allows up to 3 pods to run concurrently, dramatically reducing processing time for independent tasks like image processing or data transformation.</li><li><strong>Work Queue Jobs</strong>: Multiple pods coordinate to process items from a shared work queue. Each pod pulls tasks from the queue until it’s empty, making this pattern perfect for scenarios like processing files from a shared storage location or handling messages from a queue system.</li><li><strong>Indexed Jobs</strong>: Each pod receives a unique completion index (0, 1, 2, etc.) through the <code>JOB_COMPLETION_INDEX</code> environment variable. This enables scenarios like parallel database migrations where each pod handles a specific shard, or distributed training where each pod processes a particular data partition.</li></ul>
+      <p>These patterns are configured through Job specifications rather than separate Kubernetes resources, giving you precise control over how your batch workloads execute while maintaining the simple CronJob → Job → Pod hierarchy.</p>
+      <h2>🔵 Networking &amp; Service Mesh</h2>
+      <p>Service discovery, connectivity, and traffic management.</p>
+      <p>Kubernetes networking operates on multiple layers, each solving different connectivity challenges. The Service abstraction sits at the center, providing stable endpoints for your dynamic Pod infrastructure. As Pods come and go — whether through scaling, updates, or failures — Services maintain consistent access points through their integration with EndpointSlices, which track the current set of healthy Pod IPs.</p>
+      <p>The traffic flow hierarchy shows how external requests reach your applications. Ingress resources define HTTP/HTTPS routing rules, but they’re just configuration — the actual work happens through Ingress Controllers (like NGINX or Traefik) that watch these resources and configure the underlying load balancer accordingly. This separation of concerns allows different implementations while maintaining a consistent API.</p>
+      <p>Service mesh technology adds another layer of sophistication. Platforms like Istio introduce sidecar proxies to every Pod, enabling advanced traffic management without modifying application code. VirtualServices define sophisticated routing rules (canary deployments, traffic splitting), while DestinationRules configure load balancing and circuit breaking policies. This architecture transforms the network itself into a programmable platform.</p>
+      <p>NetworkPolicies provide microsegmentation at the Pod level, functioning as distributed firewalls that can restrict communication based on labels, namespaces, and port specifications. This enables zero-trust networking where connectivity is explicitly defined rather than implicitly allowed.</p>
+      <img alt="" loading="lazy" src="images/1_jtvAvf13PlI95Nb6fgzi_g.png" />
+      <h2>Service Types &amp; Exposure Patterns</h2>
+      <p>Different Service types provide various levels of network exposure, from internal cluster communication to external access through cloud load balancers.</p>
+      <img alt="" loading="lazy" src="images/1_ro74Ab8FP49LzozeSEP7LA.png" />
+      <h2>Service Mesh Architecture</h2>
+      <p>Service mesh provides advanced traffic management, security, and observability for microservices communication. Unlike traditional networking where applications communicate directly, service mesh intercepts all traffic through sidecar proxies, enabling sophisticated routing rules, mutual TLS, and detailed telemetry without modifying application code.</p>
+      <p>The service mesh control plane manages VirtualServices (routing rules), DestinationRules (load balancing policies), and ServiceEntries (external service registration). Each Pod gets a sidecar proxy that enforces these policies, while the mesh control plane continuously configures and monitors all proxies across the cluster.</p>
+      <img alt="" loading="lazy" src="images/1_VWsTFlXz9km-4rQVLqQaxQ.png" />
+      <h2>🟠 Storage &amp; Data</h2>
+      <p>Persistent data and volume management.</p>
+      <p>Storage in Kubernetes involves a sophisticated abstraction layer that decouples applications from underlying storage infrastructure. The relationship between PersistentVolumeClaims (PVCs) and PersistentVolumes (PVs) embodies this principle: applications request storage through PVCs without knowing the implementation details, while PVs represent the actual storage resources in the cluster.</p>
+      <p>StorageClasses enable dynamic provisioning by defining storage “templates” with specific parameters — performance tiers, replication factors, or backup policies. When a PVC references a StorageClass, Kubernetes automatically creates a PV with the specified characteristics. Container Storage Interface (CSI) drivers make this magic possible, providing a standardized way for storage vendors to integrate with Kubernetes without modifying core components.</p>
+      <p>The binding process is crucial to understand: PVCs “claim” PVs based on size, access modes, and storage class requirements. Once bound, this relationship persists until explicitly broken, ensuring data safety even if Pods are rescheduled across nodes.</p>
+      <p>Data protection operates through volume snapshots, providing point-in-time copies for backup and recovery scenarios. VolumeSnapshotClasses define how snapshots are created and managed, similar to how StorageClasses govern volume provisioning. This snapshot capability enables sophisticated backup strategies and disaster recovery procedures without requiring application-specific knowledge.</p>
+      <img alt="" loading="lazy" src="images/1_n-udpq0NETnPhTx9BPVC-A.png" />
+      <h2>🟡 Configuration &amp; Secrets</h2>
+      <p>Application settings and sensitive data management.</p>
+      <p>Configuration management in Kubernetes follows the twelve-factor app principle of separating configuration from code. ConfigMaps handle non-sensitive configuration data like application settings, feature flags, or environment-specific parameters, while Secrets manage sensitive information such as passwords, API keys, and certificates. Both resources provide the same consumption mechanisms but with different security characteristics — Secrets are base64-encoded and can be encrypted at rest.</p>
+      <p>The consumption hierarchy reveals Kubernetes’ flexibility in configuration delivery. Applications can receive configuration data as environment variables for simple key-value pairs, or as mounted files for complex configurations like JSON/YAML files or certificates. This dual approach accommodates both legacy applications expecting environment variables and cloud-native applications that prefer file-based configuration.</p>
+      <p>The decoupling between configuration sources and consumption methods is particularly powerful. The same ConfigMap can simultaneously populate environment variables for one container and provide mounted configuration files for another, all within the same Pod. This flexibility allows gradual migration strategies and supports diverse application architectures within a single deployment.</p>
+      <p>Understanding this pattern is crucial for maintaining security boundaries: while ConfigMaps are suitable for non-sensitive data, Secrets should be used for any information that could compromise security if exposed, even if it seems innocuous. The distinction affects not just storage but also access logging, rotation strategies, and backup procedures.</p>
+      <img alt="" loading="lazy" src="images/1_0T4QHt9TpoOdY0xP5ZaFlg.png" />
+      <h2>🟣 Security &amp; Access Control</h2>
+      <p>Authentication, authorization, and security policies.</p>
+      <p>Kubernetes security operates through layered defense mechanisms, each addressing different aspects of cluster protection. The system distinguishes between authentication (proving who you are) and authorization (determining what you can do), with Role-Based Access Control (RBAC) serving as the primary authorization framework.</p>
+      <p>RBAC follows a straightforward but powerful model: identities (Users or ServiceAccounts) are bound to roles (Role or ClusterRole) through bindings (RoleBinding or ClusterRoleBinding). This creates a flexible permission system where the same role can be assigned to multiple identities, and identities can hold multiple roles across different namespaces.</p>
+      <h2>RBAC Authorization</h2>
+      <img alt="" loading="lazy" src="images/1_hhwLkc9eHcfXqLWe4aJXcg.png" />
+      <p>The distinction between namespace-scoped and cluster-scoped permissions is critical: Roles define permissions within a specific namespace, while ClusterRoles can grant cluster-wide access or serve as templates for namespace-specific bindings. ServiceAccounts provide identity for Pods, enabling applications to interact with the Kubernetes API using the principle of least privilege.</p>
+      <h2>Security Enforcement</h2>
+      <p>Beyond authorization, Kubernetes provides multiple enforcement mechanisms that operate at different stages of the Pod lifecycle. These controls work together to create defense-in-depth, ensuring security policies are applied consistently across the cluster.</p>
+      <img alt="" loading="lazy" src="images/1_baQnoXxJm9BYy8mQ8eaVrg.png" />
+      <p>Admission Controllers act as gatekeepers, intercepting API requests before resources are persisted to etcd. They can validate, mutate, or reject requests based on policy rules. Pod Security Standards (the modern replacement for Pod Security Policies) enforce security constraints on Pod specifications — preventing privileged containers, enforcing read-only root filesystems, or requiring specific security contexts.</p>
+      <p>Security Contexts define the runtime security attributes for Pods and containers, including user IDs, group IDs, filesystem permissions, and capability sets. These settings are applied when containers start, providing the final layer of runtime protection.</p>
+      <h2>🟢 Cluster Infrastructure</h2>
+      <p>Platform management and resource governance.</p>
+      <p>Cluster infrastructure represents the foundational layer that supports all other Kubernetes resources. The Control Plane manages the cluster’s desired state through components like the API server, scheduler, and controller manager, while Nodes provide the compute resources where workloads execute.</p>
+      <p>Namespaces create virtual clusters within the physical cluster, providing scope for names and enabling multi-tenancy. They’re not just organizational tools — they’re security and resource boundaries. ResourceQuotas enforce limits on resource consumption within namespaces, preventing any single tenant from consuming excessive cluster resources. LimitRanges complement quotas by enforcing constraints on individual objects, such as minimum and maximum resource requests for Pods.</p>
+      <p>The scheduling hierarchy determines where Pods run. PriorityClasses enable workload prioritization during resource contention, ensuring critical applications get scheduled first. RuntimeClasses specify which container runtime to use, enabling scenarios where different workloads require different runtime environments (like gVisor for enhanced isolation or GPU-enabled runtimes for machine learning workloads).</p>
+      <img alt="" loading="lazy" src="images/1_bRtG6-BmMKCKU5TgtH1Bkg.png" />
+      <h2>🔵 Observability &amp; Operations</h2>
+      <p>Monitoring, logging, and operational tooling.</p>
+      <p>Observability in Kubernetes spans three distinct but interconnected domains: metrics, logs, and custom resource management. Each serves different purposes but together provide comprehensive insight into cluster and application health.</p>
+      <p>The monitoring stack uses DataDog as a comprehensive SaaS monitoring platform. The DataDog Agent runs as a DaemonSet on each node, automatically discovering and collecting metrics from applications and system components. The Metrics Server provides a lightweight API for basic resource metrics used by autoscaling and kubectl top commands, while DataDog handles comprehensive application and infrastructure observability through its cloud platform.</p>
+      <p>Logging in the DataDog ecosystem follows a streamlined pattern: the same DataDog Agent that collects metrics also handles log collection from both application and system sources. Logs flow directly from the agent to DataDog’s cloud platform for processing, storage, and analysis. This unified approach eliminates the need for separate log processing pipelines and provides integrated correlation between metrics and logs.</p>
+      <p>The extension stack represents Kubernetes’ most powerful operational capability: the ability to extend the API itself. Custom Resource Definitions (CRDs) create new API types, while Operators implement the domain knowledge needed to manage complex applications. Controllers provide the reconciliation logic that continuously drives actual state toward desired state. This pattern enables platforms like service meshes, databases, and monitoring systems to integrate deeply with Kubernetes while maintaining the same declarative model used for built-in resources.</p>
+      <h2>Monitoring Stack</h2>
+      <img alt="" loading="lazy" src="images/1_SaHxANCqa3Gq_E3b0S2msQ.png" />
+      <h2>Logging Stack</h2>
+      <img alt="" loading="lazy" src="images/1_GRx_egsFoQZXGaPLEEPLnw.png" />
+      <h2>Custom Resources &amp; Operators</h2>
+      <img alt="" loading="lazy" src="images/1_LRcBUOR7dIJhg2bln6SIIA.png" />
+      <h2>Key Relationships</h2>
+      <p>The diagrams above show how Kubernetes resources within each category relate to each other. Here are some important cross-category relationships:</p>
+      <ul><li><strong>Workloads</strong> consume <strong>Configuration &amp; Secrets</strong> through environment variables and volume mounts</li><li><strong>Services</strong> in <strong>Networking</strong> expose <strong>Pods</strong> from <strong>Workloads</strong></li><li><strong>Storage</strong> resources are consumed by <strong>StatefulSets</strong> and other workloads requiring persistence</li><li><strong>Security</strong> policies apply to all <strong>Workloads</strong> and control access to <strong>Storage</strong> and <strong>Configuration</strong></li><li><strong>Infrastructure</strong> resources like <strong>Nodes</strong> and <strong>Namespaces</strong> provide the foundation for all other categories</li><li><strong>Observability</strong> tools monitor and operate on resources across all categories</li></ul>
+      <p>This categorization helps developers understand the logical groupings of Kubernetes resources and how they work together to build robust, scalable applications.</p>
+    </article>
+
+    <footer class="site-footer">
+      <span>© Alex Razkevich</span>
+      <span><a href="https://github.com/razkevich">GitHub</a></span>
+    </footer>
+  </div>
+</body>
+</html>

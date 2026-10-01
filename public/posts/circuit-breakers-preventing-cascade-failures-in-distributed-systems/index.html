@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Circuit Breakers: Preventing Cascade Failures in Distributed Systems · Alex Razkevich</title>
+  <meta name="description" content="The circuit breaker pattern protects distributed systems from the cascade effects of downstream failures. Named after electrical circuit breakers that prevent e" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <div class="site-brand">
+        <p class="site-title"><a href="/">Alex Razkevich</a></p>
+        <p class="site-tag">Staff Infrastructure Engineer · GCP · reliability · system design</p>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <a href="/">Posts</a>
+        <a href="https://github.com/razkevich">GitHub</a>
+      </nav>
+    </header>
+
+    <p class="back"><a href="/">← All posts</a></p>
+    <h1 class="page-title">Circuit Breakers: Preventing Cascade Failures in Distributed Systems</h1>
+    <p class="meta">August 5, 2025</p>
+    <article class="prose">
+      <h2>Circuit Breakers: Preventing Cascade Failures in Distributed Systems</h2>
+      <p>The circuit breaker pattern protects distributed systems from the cascade effects of downstream failures. Named after electrical circuit breakers that prevent electrical fires by cutting power during overloads, software circuit breakers monitor interactions with external dependencies and automatically “trip” when failure rates exceed acceptable thresholds.</p>
+      <h2>The Core Problem: Uncontrolled Failure Propagation</h2>
+      <p>When applications depend on other services or components, failures don’t stay isolated — they propagate through dependency chains, often turning localized issues into system-wide outages. Circuit breakers solve the core problem of <strong>uncontrolled failure propagation</strong> that manifests in three critical ways:</p>
+      <h2>1. The Slow Death: Resource Starvation</h2>
+      <p>The most insidious failure mode occurs when services don’t fail immediately — they just become very slow or unresponsive. This creates a “slow death” scenario where upstream services exhaust their resources waiting for responses that never come or arrive too late to be useful.</p>
+      <img alt="" loading="lazy" src="images/1_OVucW_SIoBNoxtlzfqzISQ.png" />
+      <p><strong>Real-world scenario</strong>: An e-commerce order service calls a payment API to process transactions. The payment API doesn’t fail outright — it just becomes extremely slow due to database issues, taking 30–60 seconds per request instead of the usual 200ms. The order service keeps making calls and waiting, gradually exhausting its thread pool. Soon, the order service can’t handle any requests — not just payment-related ones, but also simple order lookups that don’t even need payment processing.</p>
+      <p><strong>Why this is devastating</strong>: Users experience complete service unavailability even though the underlying problem is just one slow dependency. The business impact cascades from “slow payments” to “website completely down.”</p>
+      <p><strong>Circuit breaker solution</strong>: Detect that the payment API is responding too slowly and fail fast with a fallback (like queuing orders for later processing), keeping the order service responsive for non-payment operations.</p>
+      <h2>2. The Domino Effect: Cross-Functional Failures</h2>
+      <p>In distributed systems, services often share resources or have multiple dependencies. When one dependency fails, it can make completely unrelated functionality unavailable by consuming shared resources or blocking operations that shouldn’t be related.</p>
+      <img alt="" loading="lazy" src="images/1_bQ3ntUNgGv0czAbwOzwXzw.png" />
+      <p><strong>Real-world scenario</strong>: An e-commerce homepage displays both product information and customer reviews. The reviews service fails completely, but the e-commerce service is designed to fetch both pieces of data before rendering any page. Users can’t see product information or make purchases — not because inventory is unavailable, but because the reviews service is down and the system waits for all data before responding.</p>
+      <p><strong>Why this is devastating</strong>: Business-critical functions (like purchasing) become unavailable due to non-critical feature failures (like reviews). The failure spreads far beyond its logical boundaries.</p>
+      <p><strong>Circuit breaker solution</strong>: When the reviews API fails, the circuit breaker opens and immediately returns empty reviews or cached data, allowing the product display and purchase flow to continue normally.</p>
+      <h2>3. The Death Spiral: Preventing Recovery</h2>
+      <p>When multiple services depend on the same downstream component, they can collectively prevent that component from recovering by continuously overloading it with retry attempts and new requests.</p>
+      <img alt="" loading="lazy" src="images/1_shbqeZeNY96FmSTXn6AQ4w.png" />
+      <p><strong>Real-world scenario</strong>: A user database starts experiencing high load due to a slow query. Instead of backing off, four different services continue sending requests at full rate. The database can’t complete existing queries because it’s constantly receiving new ones. What could have been a temporary performance blip becomes a complete outage as the database gets overwhelmed and crashes.</p>
+      <p><strong>Why this is devastating</strong>: Services that are trying to help (by continuing to serve user requests) actually prevent recovery. The system gets stuck in a failure state much longer than necessary.</p>
+      <p><strong>Circuit breaker solution</strong>: When the database shows signs of distress, circuit breakers in each service open simultaneously, dramatically reducing load and giving the database time to process existing queries and recover.</p>
+      <h2>Why Traditional Error Handling Isn’t Enough</h2>
+      <p>Standard try-catch error handling assumes failures are fast — either a request succeeds quickly or fails quickly. In distributed systems, the most dangerous failures are the ones that are neither fast success nor fast failure, but instead consume resources while providing no value.</p>
+      <p>Circuit breakers solve this by transforming slow, resource-consuming failures into fast failures, allowing systems to maintain responsiveness and preserve resources for operations that can actually succeed.</p>
+      <p>The pattern is particularly critical in cloud environments where:</p>
+      <ul><li><strong>Auto-scaling can’t help</strong> if all instances are blocked waiting for slow dependencies</li><li><strong>Load balancers can’t route around the problem</strong> if the issue is in shared dependencies</li><li><strong>Monitoring alerts fire too late</strong> because services appear “running” even though they’re unresponsive</li></ul>
+      <p>Circuit breakers provide a automatic mechanism to prevent these distributed system failure modes before they can propagate and cause system-wide outages.</p>
+      <h2>Circuit Breaker States and Approaches</h2>
+      <p>Circuit breakers operate in three states that automatically adapt to service health:</p>
+      <ul><li><strong>Closed</strong>: Normal operation — requests pass through, failures are counted</li><li><strong>Open</strong>: Failing fast — all requests return fallbacks, no calls to downstream service</li><li><strong>Half-Open</strong>: Testing recovery — limited requests test if service has recovered</li></ul>
+      <p>Transitions happen automatically: Closed→Open when failure threshold exceeded, Open→Half-Open after timeout, Half-Open→Closed on success or Half-Open→Open on continued failure.</p>
+      <p>Circuit breakers require three key design decisions:</p>
+      <p><strong>Failure Detection</strong>: Identify what constitutes failure — consecutive errors, error rate thresholds, slow response times, or health check results. Most implementations use sliding windows to track failure rates over time.</p>
+      <p><strong>Recovery Strategy</strong>: Determine when to test if services have recovered — time-based timeouts, success thresholds for closing, or manual operator overrides during maintenance.</p>
+      <p><strong>Fallback Behavior</strong>: Define what happens when the circuit is open — cached responses, default values, graceful feature degradation, alternative services, or queueing for later processing.</p>
+      <h2>Circuit Breaker Implementation Layers</h2>
+      <p>Circuit breakers can be implemented at different architectural layers, each with distinct advantages:</p>
+      <h2>Application-Level Libraries</h2>
+      <img alt="" loading="lazy" src="images/1_KThAjbppV4TbeQ7ALXDrZg.png" />
+      <p><strong>Language-specific resilience libraries</strong> integrate directly into application code. Popular languages have their own implementations, here’s two most prominent ones for Java:</p>
+      <ul><li><strong>Hystrix (Netflix)</strong>: The pioneering Java circuit breaker library, now in maintenance mode but influential in shaping the pattern</li><li><strong>Resilience4j</strong>: Modern Java resilience library with functional programming support and Spring Boot integration</li></ul>
+      <p><strong>Advantages</strong>: Fine-grained control, application-specific logic, easy debugging<br/><strong>Disadvantages</strong>: Language-specific, requires code changes, distributed configuration</p>
+      <h2>Service Mesh Circuit Breakers</h2>
+      <img alt="" loading="lazy" src="images/1_T2FEvcnZsMLirC1aASixaQ.png" />
+      <p><strong>Infrastructure-level circuit breakers</strong> operate at the network layer. Circuit breakers are handled in a cross cutting manner by a Service Mesh implementation such as Istio or Linkerd.</p>
+      <p><strong>Advantages</strong>: Language-agnostic, centralized configuration, automatic application, observability integration<br/><strong>Disadvantages</strong>: Additional infrastructure complexity, less application-specific control</p>
+      <h2>API Gateway Circuit Breakers</h2>
+      <img alt="" loading="lazy" src="images/1_-F4SJHJpkoZ3Xgm1FXJaRA.png" />
+      <p><strong>Gateway-level protection</strong> at the service boundary — API gateways monitor upstream service health and can automatically stop routing requests to failing services while returning fallback responses to clients. Many modern API gateways support that, e.g. Kong, AWS API Gateway, Nginx (especially the Plus version)</p>
+      <p><strong>Advantages</strong>: Centralized protection, easy configuration, cross-cutting concerns<br/><strong>Disadvantages</strong>: Coarse-grained control, limited to external API calls</p>
+      <h2>Cloud Provider Circuit Breakers</h2>
+      <img alt="" loading="lazy" src="images/1_qJ6k013r4BZKx-Yq9Uc5XA.png" />
+      <p>Cloud platforms provide built-in circuit breaker functionality in their serverless and orchestration services, automatically handling failures without requiring custom implementation. For example, AWS Lambda automatically stops invoking functions after repeated failures and routes failed invocations to dead letter queues.</p>
+      <p><strong>Advantages</strong>: Fully managed, integrated monitoring, auto-scaling<br/><strong>Disadvantages</strong>: Platform-specific, limited customization</p>
+      <h2>Database and Message Broker Circuit Breakers</h2>
+      <img alt="" loading="lazy" src="images/1_wakyT7K3_t7YhH4-6iVTmw.png" />
+      <p>Data layer systems implement circuit breaker-like behavior through connection management, automatic failover, and retry mechanisms that protect applications from database and messaging system failures.</p>
+      <ul><li><strong>MongoDB</strong>: Connection pool management with automatic failover</li><li><strong>Kafka</strong>: Producer and consumer retry mechanisms with circuit breaker-like behavior</li><li><strong>RabbitMQ</strong>: Connection recovery and channel-level error handling</li><li><strong>Redis</strong>: Sentinel-based failover with automatic circuit breaking</li></ul>
+      <p><strong>Advantages</strong>: Data-layer specific optimizations, automatic recovery<br/><strong>Disadvantages</strong>: Limited to specific data access patterns</p>
+      <h2>Conclusion</h2>
+      <p>Circuit breakers are essential for preventing failure propagation in systems with dependencies. By implementing them across multiple layers — from application libraries to service meshes to cloud platforms — teams can build resilient systems that fail fast, preserve resources, and maintain partial functionality even when individual components fail. The key is choosing the right implementation layer based on your architectural constraints and operational requirements.</p>
+    </article>
+
+    <footer class="site-footer">
+      <span>© Alex Razkevich</span>
+      <span><a href="https://github.com/razkevich">GitHub</a></span>
+    </footer>
+  </div>
+</body>
+</html>

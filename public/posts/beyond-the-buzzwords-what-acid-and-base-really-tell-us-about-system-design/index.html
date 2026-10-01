@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beyond the Buzzwords: What ACID and BASE Really Tell Us About System Design · Alex Razkevich</title>
+  <meta name="description" content="ACID and BASE are two acronyms that offer a convenient but somewhat reductionist categorization of systems (e.g., databases) and their guarantees. They reflect " />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <div class="site-brand">
+        <p class="site-title"><a href="/">Alex Razkevich</a></p>
+        <p class="site-tag">Staff Infrastructure Engineer · GCP · reliability · system design</p>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <a href="/">Posts</a>
+        <a href="https://github.com/razkevich">GitHub</a>
+      </nav>
+    </header>
+
+    <p class="back"><a href="/">← All posts</a></p>
+    <h1 class="page-title">Beyond the Buzzwords: What ACID and BASE Really Tell Us About System Design</h1>
+    <p class="meta">July 21, 2025</p>
+    <article class="prose">
+      <h2>ACID vs BASE: Beyond the Database Buzzwords</h2>
+      <p>ACID and BASE are two acronyms that offer a convenient but somewhat reductionist categorization of systems (e.g., databases) and their guarantees. They <strong>reflect</strong> broader <strong>design philosophies</strong> governing how systems handle <strong>consistency, availability, and reliability</strong>.</p>
+      <p>Why would I write about such a seemingly simple topic? The problem I want to tackle here is the common superficial usage of these terms, which stems from a lack of understanding of distributed systems fundamentals. Instead of using these as buzzwords, I invite you to join me in analyzing the underlying ideas, patterns, and problems that underpin this dichotomy.</p>
+      <ul><li>Is it true that ACID databases don’t scale well?</li><li>What’s the difference between eventual consistency and weak consistency?</li><li>Can we have ACID transactions in NoSQL DBs? Can RDBMSs expose relaxed (BASE) consistency properties?</li></ul>
+      <p>If these questions make you scratch your head, let’s dive into the topic!</p>
+      <h2>What Are ACID and BASE?</h2>
+      <p><strong>ACID</strong> is fundamentally about transactions in the database. It was coined in 1983 in an effort to define the terminology for fault-tolerance mechanisms. It stands for:</p>
+      <ul><li><strong>Atomic</strong> — All transactions are all-or-nothing (either fully complete or fully fail — no partial updates).</li><li><strong>Consistent</strong> — The database guarantees that transactions preserve <strong>all defined invariants</strong> — both explicit (schema constraints) and implicit (application logic). The database enforces explicit rules automatically; implicit rules require careful transaction design.</li><li><strong>Isolation</strong> — Transactions run as if they’re sequential, even when parallel. Levels (e.g., Read Committed, Serializable) tune trade-offs between correctness and performance.</li><li><strong>Durable</strong> — Committed data is permanently stored (even after power loss).</li></ul>
+      <p>Systems that do not meet these criteria are referred to as <em>BASE</em>: <em>Basically Available</em>, <em>Soft state</em>, and <em>Eventual consistency</em>.</p>
+      <ul><li><strong>B</strong>asically <strong>A</strong>vailable — The system remains operational most of the time. While some parts might fail, the overall system continues to function and serve requests.</li><li><strong>S</strong>oft state — The state of the system may change over time, even without new input. This happens because of eventual consistency — data might be in flux as it propagates across nodes.</li><li><strong>E</strong>ventual consistency — The system will become consistent over time, but it doesn’t guarantee immediate consistency across all nodes. All nodes will eventually converge to the same state, but there may be temporary inconsistencies.</li></ul>
+      <p><strong>BASE systems may relax any ACID property:</strong></p>
+      <ul><li><strong>Atomicity</strong> → Best-effort operations (e.g., “write these 10 records, get 8 successes”)</li><li><strong>Consistency</strong> → Temporary invariant violations (e.g., sum of balances might briefly be wrong)</li><li><strong>Isolation</strong> → Concurrent operations may interfere</li><li><strong>Durability</strong> → Accepted data loss for performance (e.g., in-memory caches)</li></ul>
+      <h2>Breaking the ACID = RDBMS Myth</h2>
+      <p>Here’s where many get it wrong: <strong>ACID is not exclusive to relational databases, and RDBMSs aren’t always strictly ACID</strong>.</p>
+      <h2>NoSQL Can Be ACID Too</h2>
+      <p>Several modern NoSQL databases provide ACID guarantees:</p>
+      <ul><li><strong>MongoDB</strong> (4.0+) supports multi-document ACID transactions</li><li><strong>CockroachDB</strong> and <strong>YugabyteDB</strong> offer distributed SQL with full ACID compliance</li><li><strong>Neo4j</strong> (graph database) provides ACID transactions for graph operations</li></ul>
+      <h2>When RDBMS Goes BASE</h2>
+      <p>Traditional relational databases can exhibit BASE properties when configured for scale:</p>
+      <ul><li><strong>PostgreSQL / MySQL with read replicas and async replication</strong>: Replicas can lag behind the primary, providing eventual consistency for read operations</li><li><strong>Sharded RDBMS</strong>: Cross-shard transactions often sacrifice strict consistency for performance</li><li><strong>Read-heavy optimizations</strong>: Many RDBMS deployments use caching layers (Redis, Memcached) that serve stale data</li></ul>
+      <h2>Why BASE Emerged: The Scalability Wall</h2>
+      <p>ACID sounds like a great deal, so why did the industry care to coin the new term BASE? The answer is that as data volume and velocity grow, single-node RDBs start to experience performance problems and at some point fail to cope with the load:</p>
+      <ul><li>Performance issues often emerge when database sizes exceed 100 GB to 1 TB</li><li>RDBs typically handle 1,000–10,000 RPS efficiently on moderate hardware; beyond 10,000 RPS, performance degradation is common</li><li>Tables with 10–100 million rows often start showing performance issues</li><li>Most RDBs handle 100–1,000 concurrent connections effectively</li><li>Vertical scaling costs explode: for example, going from 32 cores to 64 cores might double the costs (to around $10,000 per month) but only provide 1.4x performance</li></ul>
+      <p>That’s the point where engineers will have to consider database alternatives to traditional RDBs that support horizontal scalability, which often go under the umbrella of BASE.</p>
+      <h2>BASE: A Pragmatic Philosophy</h2>
+      <p>BASE is not a strict standard; some argue it’s more of a marketing buzzword. As Martin Kleppmann half-jokingly claimed, the best definition of BASE is that it’s not ACID. BASE emerged around 2008 as a catchy counterpoint to ACID, primarily from the experiences of companies like Amazon and eBay who were hitting the limits of traditional relational databases.</p>
+      <p>What BASE really describes is this: when you have a system distributed across multiple machines (perhaps across datacenters), the CAP theorem tells us you cannot have both perfect availability and perfect consistency during network partitions. So these systems choose availability — they’d rather give you a slightly stale answer than no answer at all.</p>
+      <p>The real insight is that many applications don’t actually need strict consistency. Your Twitter timeline being 2 seconds out of date? Fine. Your shopping cart having slight inconsistencies that resolve in 100ms? Usually acceptable. Your bank balance? Perhaps we want stronger guarantees there.</p>
+      <p>So BASE isn’t really a consistency model — it’s more of a design philosophy that says: “Let’s be pragmatic about consistency requirements and optimize for availability and partition tolerance instead.”</p>
+      <h2>The Distributed Consistency Spectrum: It’s Not Binary</h2>
+      <blockquote><p><em>When database folks say ‘consistency,’ they might mean two different things. ACID’s ‘C’ is about maintaining invariants — your account balance never goes negative. Distributed consistency is about when changes propagate across nodes — that’s what we consider here.</em></p></blockquote>
+      <p>Rather than viewing ACID and BASE representing two opposites: strong consistency and eventual consistency, we need to admit that this notion is more like a spectrum rather then a binary category.</p>
+      <h2>1. Distributed Consistency Models</h2>
+      <p><strong>Strong Consistency</strong> ← → <strong>Eventual Consistency</strong></p>
+      <ul><li><strong>Linearizability</strong>: Makes a distributed system appear as though there’s only a single copy of the data, and all operations happen atomically at a single point in time. Once a client completes a write, all clients reading from the database must be able to see the value just written. It’s a <em>recency guarantee</em> combined with atomic ordering.</li><li><strong>Sequential Consistency</strong>: All nodes see operations in the same order, and operations from each individual process appear in the order they were issued. However, there’s no real-time constraint — nodes might see operations with significant delays, as long as the ordering is preserved.</li><li><strong>Causal Consistency</strong>: If operation A <em>happens-before</em> operation B (A causally influences B), then every node that sees B must have previously seen A. Operations that are not causally related are concurrent and may be seen in different orders by different nodes. Captures the notion that causes come before effects.</li><li><strong>Eventual Consistency</strong>: If no new updates are made to a data item, eventually all accesses to that item will return the last updated value. Extremely weak — doesn’t say when convergence will happen or what values you might read in the meantime. May return any value that was ever written.</li></ul>
+      <p>Modern distributed databases increasingly offer tunable consistency — letting you choose consistency levels per operation. Amazon DynamoDB lets you request strongly consistent reads when needed. This flexibility represents the future: not ACID vs BASE, but ACID when you need it, BASE when you don’t. Or Google Spanner — it provides global consistency with reasonable performance.</p>
+      <h2>Choosing Your Consistency Model</h2>
+      <p>The choice between ACID and BASE depends on the use case:</p>
+      <p><strong>Choose stronger consistency when:</strong></p>
+      <ul><li>Financial transactions and payments</li><li>Inventory management with limited stock</li><li>User authentication and authorization</li><li>Any scenario where inconsistency = business risk</li></ul>
+      <p><strong>Choose weaker consistency when:</strong></p>
+      <ul><li>Social media feeds and timelines</li><li>Product recommendations</li><li>Analytics and reporting</li><li>Content delivery</li><li>Any scenario where slight staleness is acceptable</li></ul>
+      <h2>Conclusion</h2>
+      <p>The key takeaway? ACID and BASE aren’t about database types — they’re about trade-offs. Understanding these trade-offs, rather than treating them as buzzwords, is what enables us to build systems that balance consistency, availability, and scalability for our specific needs.</p>
+    </article>
+
+    <footer class="site-footer">
+      <span>© Alex Razkevich</span>
+      <span><a href="https://github.com/razkevich">GitHub</a></span>
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Distributed Consensus Explained: From Paxos Theory to Real-World Systems · Alex Razkevich</title>
+  <meta name="description" content="Imagine you’re building a banking system where multiple servers need to agree on account balances. Server A thinks Alice has $100, but Server B thinks she has $" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <div class="site-brand">
+        <p class="site-title"><a href="/">Alex Razkevich</a></p>
+        <p class="site-tag">Staff Infrastructure Engineer · GCP · reliability · system design</p>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <a href="/">Posts</a>
+        <a href="https://github.com/razkevich">GitHub</a>
+      </nav>
+    </header>
+
+    <p class="back"><a href="/">← All posts</a></p>
+    <h1 class="page-title">Distributed Consensus Explained: From Paxos Theory to Real-World Systems</h1>
+    <p class="meta">August 23, 2025</p>
+    <article class="prose">
+      <img alt="" loading="lazy" src="images/0_Hrb6KS_rlldD29Ma.jpg" />
+      <h2>Introduction: The Problem That Keeps Engineers Up at Night</h2>
+      <p>Imagine you’re building a banking system where multiple servers need to agree on account balances. Server A thinks Alice has $100, but Server B thinks she has $50 because it missed a recent transaction. When Alice tries to withdraw $75, which server is right? This is the distributed consensus problem — getting multiple independent computers to agree on a single value, even when some of them might fail or go offline.</p>
+      <p>Distributed consensus is one of the most fundamental problems in computer science because it underpins everything we take for granted in distributed systems: consistent databases, leader election in clusters, atomic transactions across multiple services, and coordinated configuration changes.</p>
+      <h2>Why Consensus is Hard</h2>
+      <p>The challenge isn’t just about communication — it’s about making decisions in the face of uncertainty. Networks can partition, servers can crash at any moment, and messages can be delayed or lost. Yet your system needs to maintain consistency and keep making progress. It’s like trying to organize a group decision when some people might not respond, some might be unreachable, and messages might arrive out of order.</p>
+      <p>The fundamental insight is that you can’t wait for everyone to respond (they might be down), but you also can’t make decisions unilaterally (you might be the one who’s partitioned from the group). Consensus algorithms solve this by requiring agreement from a majority of nodes, ensuring both safety (consistency) and liveness (progress).</p>
+      <p>Distributed consensus is closely related to atomic broadcast — the problem of delivering messages to all nodes in the same order. In fact, consensus and atomic broadcast are sort of interchangeable: you can implement one using the other. Most practical systems use consensus algorithms to achieve atomic broadcast (however there are implementations that position themselves deliberately as atomic broadcast such as Zookeeper’s ZAB), ensuring all replicas process operations in identical order.</p>
+      <h2>What Do We Need Consensus On?</h2>
+      <p>Before diving into specific algorithms, it’s important to understand what we’re actually trying to agree on. While consensus problems appear in many forms, they fundamentally boil down to two patterns: agreeing on a single value or agreeing on a sequence of values (which can be achieved by running multiple instances of single value consensus). Most practical applications are essentially usages of these core patterns.</p>
+      <h2>Single Value Consensus</h2>
+      <p>The simplest form is agreeing on a single value — whether it’s a simple decision, choosing a leader, or determining cluster membership. This is what basic Paxos solves — getting multiple nodes to agree on one specific value.</p>
+      <p><strong>Examples:</strong></p>
+      <ul><li><strong>Leader election</strong>: Which node (A, B, or C) should be the leader?</li><li><strong>Configuration changes</strong>: Should we add node D to the cluster?</li><li><strong>Simple decisions</strong>: Should we enable maintenance mode (yes/no)?</li><li><strong>Cluster membership</strong>: Current active nodes should be {A, B, C}</li><li><strong>Membership changes</strong>: Safely transitioning from {A, B, C} to {A, B, C, D}</li></ul>
+      <p><strong>Algorithms:</strong> Basic Paxos excels here — it’s designed specifically for single-value consensus. Raft’s joint consensus and Paxos variants with membership protocols handle the more complex membership change scenarios.</p>
+      <h2>Sequence Consensus (Total Order / Replicated Logs)</h2>
+      <p>Most commonly, we need consensus on a sequence of values — essentially a replicated log where every node agrees on the same ordered list of operations. This is also called total order consensus since all nodes must process operations in identical order. This is the foundation of most distributed systems.</p>
+      <p><strong>Examples:</strong></p>
+      <ul><li><strong>Database transactions</strong>: <code>[INSERT user Alice, UPDATE account balance, DELETE old record]</code></li><li><strong>State machine replication</strong>: <code>[SET x=1, SET y=2, DELETE z]</code></li><li><strong>Event streams</strong>: <code>[OrderCreated, PaymentProcessed, OrderShipped]</code></li><li><strong>Blockchain</strong>: Blocks must be in the same order on all nodes</li><li><strong>Event sourcing</strong>: Events must be ordered consistently across all consumers</li></ul>
+      <p><strong>Algorithms:</strong> Multi-Paxos and Raft are designed for this — they can efficiently agree on many values in sequence while providing total ordering.</p>
+      <h2>How Algorithms Match Requirements</h2>
+      <p>Different consensus algorithms are optimized for different scenarios:</p>
+      <p><strong>Basic Paxos</strong>: Perfect for single-value decisions but inefficient for sequences. You’d run separate Paxos instances for each decision.</p>
+      <p><strong>Multi-Paxos</strong>: Optimizes Paxos for sequences by electing a stable leader who can propose multiple values without repeating the prepare phase.</p>
+      <p><strong>Raft</strong>: Designed from the ground up for replicated logs. The strong leader model makes sequence consensus natural and efficient.</p>
+      <p><strong>PBFT (Byzantine Paxos)</strong>: Extends consensus to handle malicious nodes, crucial for blockchain and multi-organization systems.</p>
+      <p><strong>ZAB (ZooKeeper Atomic Broadcast)</strong>: Designed specifically as an atomic broadcast protocol, providing total order delivery of messages.</p>
+      <h2>The State Machine Approach</h2>
+      <p>Most modern distributed systems use consensus to build replicated state machines:</p>
+      <ol><li><strong>Clients submit commands</strong> (SET x=5, DELETE user Alice)</li><li><strong>Consensus algorithm orders commands</strong> across all replicas</li><li><strong>Each replica applies commands</strong> in the agreed order</li><li><strong>All replicas end up in identical state</strong></li></ol>
+      <p>This pattern works whether you’re building a distributed database, configuration store, or coordination service. The consensus algorithm ensures all replicas see the same sequence of operations, while the state machine logic determines what those operations actually do.</p>
+      <h2>Paxos: The Theoretical Foundation</h2>
+      <p>Paxos, introduced by Leslie Lamport in 1989, was the first practical solution to distributed consensus. It’s mathematically elegant but notoriously difficult to understand and implement correctly. Despite its complexity, Paxos powers some of the world’s largest distributed systems including Google Spanner, Chubby lock service, and is used in Apache Cassandra’s lightweight transactions.</p>
+      <h2>The Core Idea</h2>
+      <p>Paxos works by having nodes take on different roles in a careful dance of proposals and promises. The key insight is using a two-phase protocol: first prepare the ground by getting promises from a majority (promises to ignore any future proposals with lower proposal numbers), then propose a value that respects those promises.</p>
+      <h2>Paxos Roles</h2>
+      <ul><li><strong>Proposer</strong>: Initiates the consensus process by proposing values</li><li><strong>Acceptor</strong>: Votes on proposals and promises to ignore older proposals</li><li><strong>Learner</strong>: Learns the chosen value once consensus is reached</li></ul>
+      <p>A single node can play multiple roles simultaneously.</p>
+      <h2>Paxos Workflow</h2>
+      <p>The process begins when a client sends a request to any node in the cluster (e.g., “set configuration X” or “elect leader Y”). That node becomes the proposer and initiates the two-phase consensus protocol to get all nodes to agree on the client’s proposed value.</p>
+      <p><strong>Phase 1 — Prepare:</strong></p>
+      <ol><li>Proposer generates unique proposal number N</li><li>Sends “prepare(N)” to majority of acceptors</li><li>Each acceptor responds with:</li></ol>
+      <ul><li>Promise to ignore proposals &lt; N</li><li>The highest-numbered proposal it has previously accepted (if any), so the proposer knows what value to respect</li></ul>
+      <img alt="" loading="lazy" src="images/1_S9M-x0LinSQdY9M-EIP4GQ.png" />
+      <p><strong>Phase 2 — Accept:</strong></p>
+      <ol><li>If majority responds, proposer picks a value:</li></ol>
+      <ul><li>If acceptors returned previous proposals, use value from highest-numbered one</li><li>Otherwise, use proposer’s own value</li></ul>
+      <p>2. Sends “accept(N, value)” to majority of acceptors</p>
+      <p>3. Acceptors accept if they haven’t promised to ignore N</p>
+      <p>4. Once majority accepts, value is chosen</p>
+      <img alt="" loading="lazy" src="images/1_e9c2_vxoNohiNbEwek_POw.png" />
+      <h2>Paxos in Practice: Multi-Paxos</h2>
+      <p>Basic Paxos is inefficient for multiple values in a row — you need to run the full protocol for every decision. Multi-Paxos optimizes this by electing a stable leader who can skip Phase 1 for subsequent proposals, making it practical for real systems.</p>
+      <p>Multi-Paxos works by having nodes agree not just on individual values, but on a sequence of values (like a replicated log). Once a leader is established, it can propose values for multiple log positions without going through the prepare phase each time. Basic Paxos can guarantee order if you run separate instances for each position in a sequence (Paxos instance 1 for log entry 1, instance 2 for entry 2, etc.), but this is inefficient since each instance requires the full two-phase protocol.</p>
+      <h2>Where Paxos is Used</h2>
+      <ul><li><strong>Google Spanner</strong>: Uses Paxos for consistent global transactions</li><li><strong>Apache Cassandra</strong>: Lightweight transactions use Paxos for linearizable operations</li><li><strong>Google Chubby</strong>: Distributed lock service built on Paxos</li><li><strong>Amazon DynamoDB</strong>: Uses Paxos variants for cross-region consistency</li></ul>
+      <h2>Paxos Challenges</h2>
+      <ul><li><strong>Implementation complexity</strong>: Easy to get wrong, hard to debug</li><li><strong>Performance under contention</strong>: Multiple proposers can lead to dueling and livelock</li><li><strong>Understandability</strong>: Even experienced engineers struggle with edge cases</li><li><strong>Message overhead</strong>: Two-phase protocol requires more network round trips</li></ul>
+      <h2>Raft: Consensus for Humans</h2>
+      <p>Raft was designed in 2013 with a specific goal: make distributed consensus understandable. The creators realized that Paxos’s complexity was hindering adoption and innovation in distributed systems. Raft achieves the same guarantees as Paxos but with a design that engineers can actually reason about.</p>
+      <h2>The Core Idea</h2>
+      <p>Raft simplifies consensus by decomposing it into three independent subproblems:</p>
+      <ol><li><strong>Leader election</strong>: How to choose a coordinator</li><li><strong>Log replication</strong>: How the leader maintains consistency</li><li><strong>Safety</strong>: Ensuring the system remains consistent even during failures</li></ol>
+      <p>The key insight is having a strong leader who coordinates all changes, eliminating the need for multiple competing proposers.</p>
+      <h2>Raft Roles and States</h2>
+      <ul><li><strong>Leader</strong>: Handles client requests and coordinates replication</li><li><strong>Follower</strong>: Passively receives updates from leader</li><li><strong>Candidate</strong>: Seeks to become leader during election</li></ul>
+      <h2>Leader Election</h2>
+      <p>When a leader fails or becomes unreachable, or when the system is starting up, Raft ensures the cluster can quickly elect a new leader. Upon startup, or when followers detect leader failure through missing heartbeats, nodes can become candidates, and request votes from other nodes. The first candidate to receive a majority of votes becomes the new leader for the next term.</p>
+      <img alt="" loading="lazy" src="images/1_SiLOBqu5ihi7T_fXAaEKSw.png" />
+      <h2>Log Replication</h2>
+      <p>The leader receives client requests (any node can receive requests, but followers redirect them to the leader), appends them to its local log, then replicates entries to follower logs. Only after a majority of nodes have stored the entry does the leader commit it and notify followers. This ensures strong consistency across all nodes.</p>
+      <img alt="" loading="lazy" src="images/1_j16ImXVrVzXFyB0CVhcNwg.png" />
+      <h2>Safety and Recovery</h2>
+      <p>Raft’s safety mechanisms prevent data corruption when nodes rejoin after partitions. Each term has at most one leader, and nodes with outdated information are brought up to date through log consistency checks. Higher terms always override lower terms, ensuring the cluster converges to a single consistent state.</p>
+      <img alt="" loading="lazy" src="images/1_kYXkIRrfF7FUE_MHJxgapw.png" />
+      <h2>Safety Properties</h2>
+      <p>Raft guarantees several key safety properties:</p>
+      <ul><li><strong>Election Safety</strong>: At most one leader per term</li><li><strong>Leader Append-Only</strong>: Leaders never overwrite their logs</li><li><strong>Log Matching</strong>: Identical entries at same index across logs</li><li><strong>Leader Completeness</strong>: Committed entries appear in future leader logs</li><li><strong>State Machine Safety</strong>: Same log index = same command</li></ul>
+      <h2>Where Raft Excels</h2>
+      <ul><li><strong>etcd</strong>: Kubernetes’ configuration store uses Raft for consistency</li><li><strong>HashiCorp Consul</strong>: Service mesh coordination via Raft consensus</li><li><strong>CockroachDB</strong>: Uses Raft for consistent SQL across regions</li><li><strong>TiKV</strong>: Distributed key-value store with Raft-based replication</li></ul>
+      <h2>Raft Modifications</h2>
+      <ul><li><strong>Pre-vote</strong>: Prevents unnecessary elections from partitioned nodes</li><li><strong>Joint Consensus</strong>: Safe membership changes without losing availability</li><li><strong>KRaft (Kafka)</strong>: Apache Kafka replacing ZooKeeper with Raft for metadata</li><li><strong>Multi-Raft</strong>: Running multiple independent Raft groups for horizontal scaling</li></ul>
+      <h2>Paxos vs. Raft: Choosing the Right Algorithm</h2>
+      <p>Both algorithms solve the same fundamental problem but with different philosophies and trade-offs:</p>
+      <p><strong>Client Request Handling:</strong></p>
+      <ul><li><strong>Paxos</strong>: Any node can accept client requests and act as a proposer, initiating the consensus protocol</li><li><strong>Raft</strong>: Only the leader accepts client requests; followers redirect clients to the current leader</li></ul>
+      <p><strong>Choose Paxos when</strong> you need the most general consensus solution, have high-contention scenarios with multiple proposers, or are extending existing Paxos-based systems. It’s theoretically elegant but complex to implement correctly. The ability for any node to accept requests can provide better load distribution and availability.</p>
+      <p><strong>Choose Raft when</strong> you prioritize implementation simplicity, team understanding, and development productivity. Its strong leader model makes it natural for most distributed systems use cases like databases and configuration stores, though it creates a single point of bottleneck during normal operation.</p>
+      <p><strong>Performance-wise</strong>, Raft typically performs better during normal operation due to strong leadership eliminating conflicts, while Paxos can handle multiple proposers but may have lower throughput due to competing proposals. The leader-only model in Raft can become a bottleneck under high load, while Paxos’s flexibility comes with coordination overhead.</p>
+      <h2>Byzantine Fault Tolerance: When Nodes Can’t Be Trusted</h2>
+      <p>Both Paxos and Raft assume nodes fail by crashing (fail-stop model) — they either work correctly or stop working entirely. But what if nodes can behave maliciously, sending conflicting messages or corrupting data? This is the Byzantine fault problem, named after the Byzantine Generals Problem where generals might be traitors.</p>
+      <h2>When Byzantine Tolerance Matters</h2>
+      <p>Byzantine fault tolerance becomes critical in:</p>
+      <ul><li><strong>Blockchain networks</strong>: Where participants may be adversarial</li><li><strong>Multi-organization systems</strong>: When you can’t trust all participants</li><li><strong>Critical infrastructure</strong>: Where compromised nodes could cause catastrophic failures</li><li><strong>Distributed ledgers</strong>: Where financial incentives might motivate malicious behavior</li></ul>
+      <h2>Byzantine Consensus Algorithms</h2>
+      <p>Byzantine consensus algorithms are designed for environments where some nodes may act maliciously or be compromised. They require more nodes and higher message complexity than crash fault-tolerant algorithms.</p>
+      <h3>Traditional Byzantine Consensus (Permissioned Networks)</h3>
+      <p><strong>PBFT (Practical Byzantine Fault Tolerance)</strong> was the first practical Byzantine consensus algorithm. It requires 3f+1 total nodes to tolerate f Byzantine failures (compared to 2f+1 for crash faults) and uses a three-phase protocol with cryptographic verification. It’s used in Hyperledger Fabric (enterprise blockchain platform), BFT-SMaRt library (Java Byzantine replication framework), and academic research systems.</p>
+      <p><strong>Modern improvements:</strong></p>
+      <ul><li><strong>HotStuff</strong>: Provides linear message complexity and better performance than PBFT. Used in Facebook’s Diem project (discontinued cryptocurrency) and some enterprise platforms.</li><li><strong>Tendermint</strong>: PBFT-inspired with immediate finality, optimized for blockchain use cases. Powers Cosmos Hub (interchain protocol), Terra (stablecoin ecosystem), Binance Chain (cryptocurrency exchange blockchain), and many Cosmos SDK blockchains.</li><li><strong>Istanbul BFT</strong>: Ethereum-compatible variant used in private Ethereum networks and some enterprise blockchain platforms.</li></ul>
+      <h3>Blockchain Consensus (Permissionless Networks)</h3>
+      <p>Permissionless networks face additional challenges since anyone can join, requiring different approaches:</p>
+      <ul><li><strong>Longest Chain Rule (Bitcoin)</strong>: Simple consensus where the longest valid chain wins, using Proof of Work for Sybil resistance and leader selection</li><li><strong>Gasper (Ethereum 2.0)</strong>: Combines Casper FFG and LMD GHOST protocols, using Proof of Stake for validator selection and economic security</li></ul>
+      <h2>The Cost of Byzantine Tolerance</h2>
+      <p>Byzantine algorithms come with significant overhead:</p>
+      <ul><li><strong>More nodes required</strong>: 3f+1 vs 2f+1 for crash fault tolerance</li><li><strong>Higher message complexity</strong>: Nodes must verify each other’s behavior</li><li><strong>Cryptographic overhead</strong>: Digital signatures and verification add latency</li><li><strong>Implementation complexity</strong>: Much harder to implement correctly than crash fault algorithms</li></ul>
+      <p>For most traditional distributed systems, the cost of Byzantine tolerance outweighs the benefits since nodes are typically within the same trust boundary (same company, data center, etc.).</p>
+      <h2>The Future of Consensus</h2>
+      <p>Modern distributed systems are pushing consensus algorithms in new directions:</p>
+      <p><strong>Flexible Consensus</strong>: Protocols that can adapt their consistency guarantees based on application needs (EPaxos, PBFT variants).</p>
+      <p><strong>Blockchain Integration</strong>: Adapting classical consensus for cryptocurrency and smart contract platforms.</p>
+      <p><strong>Geo-Distributed Systems</strong>: Handling consensus across multiple data centers with varying network conditions.</p>
+      <p>The fundamental problem of distributed consensus remains as relevant as ever. As we build increasingly complex distributed systems — from microservices architectures to planet-scale databases — understanding these algorithms becomes essential for any engineer working with distributed systems.</p>
+      <p>The choice between Paxos and Raft often comes down to your team’s priorities: theoretical rigor versus practical implementation, flexibility versus simplicity, academic elegance versus engineering productivity. Both have their place in the distributed systems toolkit, and understanding both makes you a better distributed systems engineer.</p>
+    </article>
+
+    <footer class="site-footer">
+      <span>© Alex Razkevich</span>
+      <span><a href="https://github.com/razkevich">GitHub</a></span>
+    </footer>
+  </div>
+</body>
+</html>

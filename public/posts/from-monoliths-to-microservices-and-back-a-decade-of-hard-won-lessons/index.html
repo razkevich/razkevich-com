@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>From Monoliths to Microservices and Back: A Decade of Hard-Won Lessons · Alex Razkevich</title>
+  <meta name="description" content="When Amazon Prime Video announced they’d moved their video monitoring and analytics services back to a monolithic architecture to reduce latency and operational" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <div class="site-brand">
+        <p class="site-title"><a href="/">Alex Razkevich</a></p>
+        <p class="site-tag">Staff Infrastructure Engineer · GCP · reliability · system design</p>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <a href="/">Posts</a>
+        <a href="https://github.com/razkevich">GitHub</a>
+      </nav>
+    </header>
+
+    <p class="back"><a href="/">← All posts</a></p>
+    <h1 class="page-title">From Monoliths to Microservices and Back: A Decade of Hard-Won Lessons</h1>
+    <p class="meta">August 7, 2025</p>
+    <article class="prose">
+      <img alt="" loading="lazy" src="images/0_E_5hHZyF7dd_O8_q.jpg" />
+      <p>When Amazon Prime Video announced they’d moved their video monitoring and analytics services back to a monolithic architecture to reduce latency and operational complexity, it sent shockwaves through the tech industry. This was particularly striking coming from Amazon — one of the original champions of microservices whose “two-pizza team” philosophy and service-oriented architecture helped define the pattern. When Segment followed suit, and then Istio simplified its own architecture by merging services, it became clear: the pendulum was swinging back.</p>
+      <p>But this isn’t a story about microservices failing — it’s about an industry learning the hard way that architectural decisions should be driven by real needs, not trends. After a decade of adoption, we’ve moved beyond the hype cycle to understand when microservices make sense, when they don’t, and what comes next.</p>
+      <p>The journey from monoliths to microservices promised independent deployment, better scaling, and team autonomy. For many organizations, it delivered on these promises. For others, it created distributed monoliths — systems with all the complexity of microservices but none of the benefits. Today’s most successful teams build adaptive architectures that can evolve between these patterns as their needs change.</p>
+      <p>Below we explore the full microservices journey: their core principles and benefits, the communication patterns that make them work, strategies for decomposing monoliths, the technology stack that enables them, testing approaches for distributed systems, and the modern architectural patterns emerging from a decade of real-world experience.</p>
+      <h2>The Anatomy of Microservices</h2>
+      <p>At its core, a microservice is a small, autonomous service that does one thing well. But what makes a service truly “micro”? It’s not about lines of code — size is determined by complexity and responsibility, not line count. The key characteristics that define a well-designed microservice include:</p>
+      <p><strong>Business Capability Focus</strong>: Each service should align with a specific business capability or domain. A user authentication service handles authentication, a payment service processes payments, and an inventory service manages stock levels. This isn’t just technical organization — it’s business organization in code.</p>
+      <p><strong>Data Ownership</strong>: Perhaps the most critical principle is that each microservice owns its data completely. This means having its own database, data model, and being the single source of truth for that domain. No other service should directly acc<br/>ess another service’s database — all interactions must happen through well-defined APIs.</p>
+      <p><strong>Independent Deployment</strong>: Teams should be able to deploy services independently without coordinating with other teams. This autonomy is what enables the rapid iteration that microservices promise.</p>
+      <p><strong>Technology Agnostic</strong>: Different services can use different programming languages, frameworks, and databases. Your recommendation engine might be written in Python with TensorFlow, while your payment service uses Java with Spring Boot.</p>
+      <h2>The Benefits That Matter</h2>
+      <p>The advantages of microservices become apparent at scale. <strong>Independent scaling</strong> allows you to allocate resources where they’re needed most — scale your video processing service during peak hours while keeping your user profile service at baseline capacity. <strong>Team autonomy</strong> enables organizations to move faster by reducing coordination overhead and allowing teams to choose their own technology stacks and deployment schedules.</p>
+      <p><strong>Fault isolation</strong> means that when one service fails, it doesn’t necessarily bring down the entire system. Your recommendation engine might be struggling, but users can still browse, search, and make purchases.</p>
+      <h2>The Challenges Are Real</h2>
+      <p>However, microservices introduce complexity that many teams underestimate. <strong>Distributed system complexity</strong> means dealing with network latency, partial failures, and eventual consistency. <strong>Operational overhead</strong> multiplies — instead of monitoring one application, you’re now monitoring dozens or hundreds of services, each with its own logs, metrics, and deployment pipeline.</p>
+      <p><strong>Network overhead compounds quickly</strong>. What seems like simple functionality — playing a video, loading a user profile, or processing a payment — suddenly requires orchestrating multiple service calls. Each hop adds latency, and debugging failures becomes an exercise in distributed systems archaeology. Teams often discover that the operational complexity of managing dozens of independent services dwarfs the complexity of the original monolith.</p>
+      <p><strong>Service proliferation</strong> creates its own problems. As teams embrace the “do one thing well” philosophy, they often end up with services so granular that simple business operations require complex choreography. The cognitive overhead of tracking dependencies, understanding data flows, and coordinating deployments across a sprawling service landscape can paralyze development velocity.</p>
+      <p><strong>Data consistency</strong> becomes a distributed systems problem. When a customer places an order, you might need to update inventory, process payment, and send notifications across multiple services — all while handling potential failures gracefully.</p>
+      <h2>Common Antipatterns to Avoid</h2>
+      <p><strong>Shared Databases</strong>: The moment two services share a database, you’ve lost the independence that makes microservices valuable. Changes to the database schema now require coordination between teams, and you’ve coupled your services at the data layer.</p>
+      <p><strong>Distributed Monoliths</strong>: Services that are so tightly coupled they must be deployed together defeat the purpose entirely. If changing one service requires changes to five others, you have a distributed monolith — all the complexity of microservices with none of the benefits.</p>
+      <p><strong>Premature Decomposition</strong>: Starting with microservices from day one often leads to wrong service boundaries. It’s usually better to start with a well-structured monolith and extract services as domain boundaries become clear and teams grow.</p>
+      <h2>Communication: The Nervous System of Microservices</h2>
+      <p>In a monolith, method calls are cheap and reliable. In microservices, communication becomes a first-class design concern that can make or break your system’s reliability and performance. The way services communicate shapes everything from your system’s latency characteristics to its failure modes.</p>
+      <h2>Synchronous Communication: REST and Beyond</h2>
+      <p><strong>HTTP/REST APIs</strong> remain the most common communication pattern. They’re simple, widely understood, and tooling is excellent. When a user requests their order history, your API gateway can synchronously call the orders service, which might then call the user service to enrich the response with user details.</p>
+      <p>But REST isn’t your only option for synchronous communication. <strong>gRPC</strong> has gained significant traction, especially for internal service-to-service communication. With Protocol Buffers providing type safety and efficient serialization, gRPC offers better performance and stronger contracts than JSON over HTTP. Companies like Netflix and Uber have built entire microservice communication layers on gRPC.</p>
+      <p><strong>GraphQL</strong> presents an interesting middle ground, allowing clients to request exactly the data they need while abstracting away the complexity of multiple service calls. Your mobile app doesn’t need to know whether user profiles and order history come from different services.</p>
+      <p>The challenge with synchronous communication is <strong>coupling and cascading failures</strong>. When Service A calls Service B, which calls Service C, you’ve created a chain of dependencies. If Service C is slow, it affects the entire chain. If it’s down, the whole operation fails.</p>
+      <h2>Asynchronous Communication: Embracing Eventually Consistent Reality</h2>
+      <p><strong>Message queues and event streams</strong> decouple services in time. Instead of “Please process this payment and wait for me,” you say “A payment was requested” and move on. This fundamentally changes your system’s resilience characteristics.</p>
+      <p>Popular tools like <strong>Apache Kafka</strong>, <strong>RabbitMQ</strong>, and cloud-managed services like <strong>AWS SQS/SNS</strong> provide the infrastructure for reliable message delivery. The key insight is that many business processes don’t actually require immediate consistency — they require eventual consistency with excellent user experience.</p>
+      <h2>Event-Driven Architecture: Services as Reactive Systems</h2>
+      <p>Event-driven architecture (EDA) treats services as reactive systems that respond to events rather than direct commands. When a user completes a purchase, instead of the order service directly calling the inventory service, payment service, and notification service, it publishes an “OrderCompleted” event.</p>
+      <p>This approach offers several advantages: <strong>loose coupling</strong> between services, <strong>scalability</strong> (services can process events at their own pace), and <strong>auditability</strong> (events provide a natural audit log of what happened in your system).</p>
+      <p>However, EDA introduces challenges around <strong>message ordering</strong>, <strong>duplicate processing</strong>, and <strong>event schema evolution</strong>. When you publish an “OrderCompleted” event, you need to ensure all interested services can process it, even as the event structure evolves over time.</p>
+      <h2>CQRS and Event Sourcing: Rethinking Data Flow</h2>
+      <p>When microservices embrace event-driven architectures, traditional CRUD operations often become a bottleneck. <strong>CQRS (Command Query Responsibility Segregation)</strong> and <strong>Event Sourcing</strong> emerge as natural patterns that complement both microservices autonomy and event-driven communication.</p>
+      <p><strong>CQRS</strong> separates read and write operations, often using different data models for each. In a microservices context, this might mean having separate services for handling commands (writes) and queries (reads). This separation allows read services to optimize for complex queries and reporting without impacting the performance of write operations.</p>
+      <p><strong>Event Sourcing</strong> takes this further by storing events as the source of truth rather than current state. Instead of storing “John’s account balance is $500,” you store “John deposited $1000, then withdrew $500.” The current balance is derived by replaying events.</p>
+      <p>These patterns synergize powerfully with microservices and event-driven architectures. Event sourcing naturally produces the events that drive inter-service communication, while CQRS enables services to maintain their own optimized views of data from other services. A single business transaction might generate events consumed by multiple services, each building their own read models optimized for their specific needs. This eliminates the need for complex joins across service boundaries while maintaining data consistency through eventual consistency patterns.</p>
+      <h2>Handling Distributed Transactions with Sagas</h2>
+      <p>In a monolithic application, you can use database transactions to ensure consistency. In microservices, data is spread across multiple databases owned by different services. This is where <strong>Saga patterns</strong> come in.</p>
+      <p>A saga is a sequence of local transactions where each service publishes events or sends commands to trigger the next step. If any step fails, compensating transactions undo the work of completed steps.</p>
+      <p>Consider an e-commerce order process:</p>
+      <ol><li>Order service reserves inventory</li><li>Payment service charges the customer</li><li>Shipping service schedules delivery</li></ol>
+      <p>If payment fails, the saga triggers compensation: the order service releases the inventory reservation, and the shipping service cancels the delivery.</p>
+      <p><strong>Choreography-based sagas</strong> use events — each service listens for events and decides what to do next. <strong>Orchestration-based sagas</strong> use a central coordinator that manages the transaction flow. Each approach has trade-offs in complexity, coupling, and failure handling.</p>
+      <p>The key insight is that distributed transactions in microservices aren’t about achieving ACID properties across services — they’re about achieving business consistency through carefully designed compensation flows.</p>
+      <h2>Decomposition: The Art and Science of Service Boundaries</h2>
+      <p>Perhaps no decision in microservices architecture is more crucial — or more fraught — than determining service boundaries. Get it right, and you unlock the full potential of independent teams moving at high velocity. Get it wrong, and you end up with a distributed big ball of mud that’s harder to manage than the monolith you started with.</p>
+      <h2>Domain-Driven Design: Your North Star</h2>
+      <p><strong>Domain-Driven Design (DDD)</strong> provides the most reliable framework for microservice decomposition. DDD’s concept of <strong>bounded contexts</strong> maps naturally to microservice boundaries. A bounded context is an area of the business where certain terms, rules, and models apply consistently.</p>
+      <p>In an e-commerce system, the “Customer” entity means different things in different contexts. In the <strong>Sales context</strong>, a customer has purchase history, preferences, and loyalty status. In the <strong>Support context</strong>, a customer has tickets, issue history, and satisfaction ratings. In the <strong>Billing context</strong>, a customer has payment methods, invoices, and credit limits.</p>
+      <p>Each bounded context should become its own microservice with its own data model. The “Customer” entity can be represented differently in each service, optimized for that service’s specific needs.</p>
+      <h2>Identifying Service Boundaries</h2>
+      <p><strong>Start with business capabilities</strong>, not technical components. Instead of having “Database Service” and “UI Service,” think “Order Management Service” and “Inventory Service.” Ask yourself: “What business capabilities does our system provide?” Each capability is a potential service boundary.</p>
+      <p><strong>Look for data ownership patterns</strong>. Services should own their data end-to-end. If you find yourself saying “The order service needs to read from the user database,” you’ve identified a potential boundary problem. Either the user service should provide an API for that data, or that data belongs in the order service.</p>
+      <p><strong>Consider team structures</strong>. Conway’s Law isn’t just descriptive — it’s prescriptive. If you have separate teams for user management and order processing, these are natural service boundaries. Trying to fight Conway’s Law usually results in organizational friction and system complexity.</p>
+      <p><strong>Identify transaction boundaries</strong>. Operations that need to be strongly consistent should generally live in the same service. If you frequently need distributed transactions between services, consider whether those services should actually be one service.</p>
+      <h2>The Strangler Fig Pattern: Evolving from Monoliths</h2>
+      <p>Most organizations don’t start with microservices — they evolve to them. The <strong>Strangler Fig pattern</strong> (named after the vine that gradually encompasses and eventually replaces its host tree) provides a systematic approach to this evolution.</p>
+      <p>Instead of attempting a big-bang rewrite, you gradually extract functionality from the monolith:</p>
+      <ol><li><strong>Identify a bounded context</strong> within the monolith that could be extracted</li><li><strong>Build the new microservice</strong> alongside the monolith</li><li><strong>Route new functionality</strong> to the microservice while keeping existing functionality in the monolith</li><li><strong>Gradually migrate existing functionality</strong> from the monolith to the microservice</li><li><strong>Remove the replaced functionality</strong> from the monolith</li></ol>
+      <p>This pattern reduces risk and allows for learning and adjustment as you go. You might start with a read-only service (like search or recommendations) before tackling more complex transactional services.</p>
+      <h2>Branch by Abstraction: Managing the Transition</h2>
+      <p><strong>Branch by Abstraction</strong> helps manage the technical aspects of extraction. Instead of directly calling monolith code, you introduce an abstraction layer that can route to either the monolith or the new service. This allows for gradual migration and easy rollback if issues arise.</p>
+      <pre><code>// Before
+      orderService.processOrder(order)</code></pre>
+      <pre><code>// During migration - abstraction layer
+      orderProcessor.processOrder(order) // Routes to monolith or microservice</code></pre>
+      <pre><code>// After
+      orderMicroservice.processOrder(order)</code></pre>
+      <h2>Database Decomposition Strategies</h2>
+      <p>One of the biggest challenges in microservice extraction is dealing with shared databases. Several patterns can help:</p>
+      <p><strong>Database per Service</strong>: The ideal end state where each service has its own database. This might require denormalizing data and accepting eventual consistency between services.</p>
+      <p><strong>Shared Database Anti-Pattern</strong>: Multiple services sharing the same database. While sometimes necessary during transitions, this couples services at the data layer and should be temporary.</p>
+      <p><strong>Database Views</strong>: Create views that present data in the format expected by each service while maintaining a shared underlying schema. This can be a useful intermediate step.</p>
+      <p><strong>Event Sourcing for Decomposition</strong>: Use events to sync data between services during decomposition. The monolith publishes events about data changes, and new services can build their own data models by consuming these events.</p>
+      <h2>The Technology Stack That Makes Microservices Possible</h2>
+      <p>Microservices became practical only when supporting technologies matured. The convergence of containers, orchestration, cloud computing, and observability tools transformed distributed systems from academic curiosities into production reality.</p>
+      <h2>Container Orchestration and Service Mesh</h2>
+      <p><strong>Kubernetes</strong> emerged as the foundation for microservices deployment, handling service discovery, load balancing, health checks, and rolling deployments. Its declarative model means you describe desired state and Kubernetes maintains it — restarting failed services, scaling under load, rescheduling workloads.</p>
+      <p><strong>Service meshes</strong> like Istio, Linkerd, and Consul Connect add service-to-service communication patterns — retries, circuit breaking, observability — at the infrastructure level rather than in application code.</p>
+      <h2>Cloud and Infrastructure Automation</h2>
+      <p><strong>Managed cloud services</strong> democratized microservices adoption. AWS, Google Cloud, and Azure provide managed Kubernetes, databases, message queues, and serverless computing that eliminate operational overhead.</p>
+      <p><strong>Infrastructure as Code</strong> tools like Terraform and GitOps platforms like ArgoCD ensure consistent, reproducible deployments across environments. Manual infrastructure management becomes impossible at microservices scale.</p>
+      <h2>Observability and Deployment</h2>
+      <p><strong>Distributed tracing</strong> (Jaeger, Zipkin) and <strong>metrics collection</strong> (Prometheus, Grafana) provide visibility into system behavior across service boundaries. The “three pillars” — metrics, logs, traces — become essential for debugging distributed failures.</p>
+      <p><strong>Independent CI/CD pipelines</strong> enable each service to build, test, and deploy independently. Progressive delivery techniques like canary releases and feature flags reduce deployment risk.</p>
+      <h2>Testing: Rethinking Quality Assurance in Distributed Systems</h2>
+      <p>Testing microservices presents fundamentally different challenges than testing monolithic applications. The distributed nature introduces network boundaries, service dependencies, and failure modes that don’t exist in single-process applications. Understanding how to test effectively becomes critical for maintaining confidence in system reliability.</p>
+      <h2>The Test Pyramid in Practice</h2>
+      <img alt="" loading="lazy" src="images/1_xQOhwBSkK06a0DAQ-HgoKw.png" />
+      <p>The classic test pyramid — unit tests at the base, integration tests in the middle, and end-to-end tests at the top — remains relevant but requires adaptation for microservices. <strong>Unit tests</strong> stay largely unchanged, testing individual functions and classes in isolation with the same fast feedback loops you’d expect.</p>
+      <p><strong>Service tests</strong> become more important in microservices architecture. These tests verify a single microservice’s behavior by running the service in isolation with external dependencies stubbed out. They provide confidence that your service works correctly without the complexity and brittleness of testing multiple services together.</p>
+      <p><strong>End-to-end tests</strong> that span multiple services become increasingly problematic as your system grows. With multiple services, teams, and deployment pipelines, these tests become slow, flaky, and difficult to maintain. More critically, they create coordination bottlenecks that undermine the independent deployability that makes microservices valuable.</p>
+      <h2>Consumer-Driven Contracts: A Better Alternative</h2>
+      <p><strong>Consumer-driven contracts (CDCs)</strong> offer a compelling alternative to broad end-to-end tests. Instead of testing the entire system together, consumer teams write tests that express their expectations of how a producer service should behave. These contract tests run against the producer service in isolation, catching breaking changes without the overhead of full system tests.</p>
+      <p>Tools like <strong>Pact</strong> enable teams to generate these contracts programmatically and share them between teams. When a producer service changes, the contract tests immediately reveal which consumers would be affected, enabling teams to have focused conversations about API evolution rather than discovering breaks in production.</p>
+      <p>CDCs work particularly well because they align with team boundaries — the same organizational structure that shapes your microservices architecture. They make explicit the communication that should already exist between teams.</p>
+      <h2>Testing in Production: Embracing Reality</h2>
+      <p>Perhaps the most significant shift in microservices testing is embracing testing in production. The complexity of distributed systems means you cannot catch all potential failures in preproduction environments. Production testing becomes not just beneficial but necessary.</p>
+      <p><strong>Synthetic monitoring</strong> runs automated tests against production systems continuously, using fake transactions to verify core user journeys work correctly. <strong>Canary deployments</strong> become a form of testing where new versions are gradually rolled out to subsets of users. <strong>Feature flags</strong> enable teams to test new functionality in production with controlled exposure.</p>
+      <p>This shift reflects a broader philosophy change: optimizing for <strong>mean time to recovery (MTTR)</strong> rather than just <strong>mean time between failures (MTBF)</strong>. Instead of trying to prevent all failures, successful teams build systems that fail gracefully and recover quickly.</p>
+      <h2>The Great Reconsideration: Microservices in 2025 and Beyond</h2>
+      <p>The conversation around microservices has matured significantly since the early days of evangelical adoption. We’re now in an era of pragmatic reflection, where organizations are honestly evaluating what worked, what didn’t, and what comes next.</p>
+      <h2>The Pendulum Swings Back</h2>
+      <p>The most telling stories come from companies that helped define microservices in the first place. When <strong>Prime Video’s engineering team</strong> decided to consolidate several services back into a monolith for their monitoring system, it wasn’t a failure — it was engineering maturity. They kept microservices where they made sense and consolidated where performance mattered more than independence.</p>
+      <p><strong>Segment</strong> famously rewrote their event processing pipeline from microservices back to a monolith, dramatically simplifying their architecture. Even <strong>Istio</strong>, a tool specifically designed to make microservices manageable, consolidated multiple control plane services to reduce operational complexity.</p>
+      <p>These moves represent a fundamental shift in thinking. Early microservices adoption was often driven by technology enthusiasm rather than business requirements. The second wave is characterized by pragmatic engineering: use the right tool for the job, even if that means choosing boring solutions over exciting ones.</p>
+      <h2>The Real Lessons Learned</h2>
+      <p><strong>Premature Distribution</strong>: Many teams discovered they were solving problems they didn’t have. A startup with five engineers doesn’t benefit from the organizational advantages of microservices — they just get the operational complexity without the payoff.</p>
+      <p><strong>Underestimating Operational Overhead</strong>: Each microservice introduces deployment pipelines, monitoring, logging, and operational complexity. Teams found themselves spending more time managing infrastructure than building features.</p>
+      <p><strong>Wrong Service Boundaries</strong>: Without deep domain knowledge, teams often created service boundaries that cut across business operations, resulting in chatty, interdependent services that were harder to manage than the original monolith.</p>
+      <h2>Modern Patterns: Beyond Binary Thinking</h2>
+      <p>The industry has moved beyond the false dichotomy of “monolith vs. microservices” toward more nuanced approaches:</p>
+      <h2>Modular Monoliths: The Best of Both Worlds</h2>
+      <p><strong>Modular monoliths</strong> organize code into distinct modules with clear boundaries but deploy as a single unit. You get the organizational benefits of clear domain separation without the operational complexity of distributed systems. Tools like <strong>Spring Modulith</strong> provide frameworks for building modular monoliths with enforced module boundaries and integration testing support.</p>
+      <p>Companies like <strong>Shopify</strong> and <strong>GitHub</strong> have successfully used this pattern, structuring their applications as collections of well-defined modules that could theoretically be extracted as microservices if needed. The <strong>Majestic Monolith</strong> — a software architecture philosophy championing well-architected monolithic applications argues showcases how well-structured monoliths can scale to significant size while remaining maintainable. The key insight is that many of the benefits attributed to microservices — clear boundaries, team ownership, independent development — can be achieved within a monolithic deployment model.</p>
+      <h2>Macroservices: Bigger Services, Fewer Problems</h2>
+      <p><strong>Macroservices</strong> represent yet another compromise — services that are larger than traditional microservices but smaller than monoliths. Instead of having separate services for user authentication, user profiles, and user preferences, you might have a single “User Service” that handles all user-related functionality.</p>
+      <p>This approach reduces the number of network calls, simplifies transactions, and decreases operational overhead while still providing service boundaries aligned with team ownership.</p>
+      <h2>Architectural Pragmatism: Beyond Binary Choices</h2>
+      <p>The most sophisticated teams have moved beyond the monolith-versus-microservices debate entirely. They’re building systems that optimize for business outcomes rather than architectural purity. Some parts of their system might be tightly integrated monoliths where performance is critical. Other parts might be loosely coupled microservices where team independence matters more than milliseconds.</p>
+      <p>This isn’t compromise — it’s engineering wisdom. Different parts of your system have different requirements, different constraints, and different trade-offs. A payment processing core might need the tight integration and predictable performance of a monolith, while a recommendation system benefits from the experimental agility of microservices.</p>
+      <h2>The Serverless Alternative</h2>
+      <p><strong>Serverless computing</strong> and <strong>Function-as-a-Service (FaaS)</strong> platforms provide many of the benefits of microservices — independent deployment, automatic scaling, pay-per-use pricing — without the operational overhead of managing containers and orchestration platforms.</p>
+      <p>For certain types of workloads, especially event-driven and infrequently accessed services, serverless can provide the granularity and independence of microservices with much lower operational complexity.</p>
+      <h2>Event Streaming as Architecture</h2>
+      <p><strong>Event streaming platforms</strong> like Kafka are enabling new architectural patterns that combine benefits of both monoliths and microservices. Instead of direct service-to-service communication, systems publish events to streams that other services can consume.</p>
+      <p>This <strong>event-driven architecture</strong> allows for loose coupling between services while maintaining data consistency through event sourcing and CQRS patterns. Services can be independently developed and deployed but share state through well-defined event schemas.</p>
+      <h2>Micro-Frontends: Extending Microservices to the UI</h2>
+      <p>The microservices philosophy has naturally extended to frontend architectures with <strong>micro-frontends</strong> — breaking down monolithic frontend applications into smaller, independently deployable pieces that can be owned by the same teams that own the backend services.</p>
+      <p>Tools like <strong>Module Federation</strong> in Webpack, <strong>Single-SPA</strong>, and <strong>Bit</strong> enable teams to build and deploy frontend components independently while composing them into cohesive user experiences. This approach allows frontend teams to move at the same pace as their backend counterparts, choosing their own frameworks, libraries, and deployment schedules.</p>
+      <p>However, micro-frontends introduce their own complexity around consistency, shared state management, and user experience coherence. The most successful implementations focus on clear boundaries and strong design systems rather than technology for its own sake.</p>
+      <h2>Application Runtimes: Simplifying Distributed Systems</h2>
+      <p><strong>Dapr (Distributed Application Runtime)</strong> — a portable, event-driven runtime that makes it easier for developers to build resilient, microservice stateless and stateful applications — represents a new category of tools that provide building blocks for distributed applications. Rather than having each service implement patterns like service discovery, state management, and pub/sub messaging, Dapr provides these as sidecar services that any application can use regardless of programming language.</p>
+      <p>This approach democratizes distributed systems patterns, making it easier for teams to build resilient microservices without deep expertise in distributed systems. Similar runtimes are emerging across the ecosystem, abstracting away the complexity of distributed systems infrastructure.</p>
+      <h2>The Future: Adaptive Architectures</h2>
+      <p>The trend is toward <strong>adaptive architectures</strong> that can evolve as organizations grow. Start with a well-structured monolith, extract services when team boundaries become clear, and continue evolving the architecture as needs change.</p>
+      <p>Tools and patterns are emerging to support this evolution — better monolith decomposition tools, standardized service interfaces, and platforms that can host both monolithic and microservice components.</p>
+      <p>The key insight is that architecture isn’t a one-time decision — it’s an ongoing evolution that should match your organization’s current needs while preparing for future requirements. The companies succeeding with microservices today are those that adopted them intentionally, with clear understanding of the trade-offs and investment in the necessary supporting infrastructure.</p>
+      <h2>Conclusion: Building Systems That Scale with Your Organization</h2>
+      <p>After a decade of microservices evolution, the key insight is simple: architecture should serve your organization, not the other way around. The most successful teams build adaptive systems that can evolve between monoliths and microservices as needs change.</p>
+      <p>The future belongs to pragmatic engineering — using monoliths where simplicity matters, microservices where independence is crucial, and hybrid approaches that optimize for business outcomes rather than architectural purity.</p>
+      <p>The question isn’t whether to choose microservices or monoliths — it’s how to build systems that serve your users, empower your teams, and grow with your ambitions.</p>
+    </article>
+
+    <footer class="site-footer">
+      <span>© Alex Razkevich</span>
+      <span><a href="https://github.com/razkevich">GitHub</a></span>
+    </footer>
+  </div>
+</body>
+</html>

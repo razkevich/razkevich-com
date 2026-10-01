@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rate Limiting at Scale: Lessons From Production SaaS Systems · Alex Razkevich</title>
+  <meta name="description" content="How should we design a SaaS application to deal with a rise in incoming traffic? Of course, the answer is to design it for scalability to handle increased load," />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <div class="site-brand">
+        <p class="site-title"><a href="/">Alex Razkevich</a></p>
+        <p class="site-tag">Staff Infrastructure Engineer · GCP · reliability · system design</p>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <a href="/">Posts</a>
+        <a href="https://github.com/razkevich">GitHub</a>
+      </nav>
+    </header>
+
+    <p class="back"><a href="/">← All posts</a></p>
+    <h1 class="page-title">Rate Limiting at Scale: Lessons From Production SaaS Systems</h1>
+    <p class="meta">July 23, 2025</p>
+    <article class="prose">
+      <h2>How to Design Rate Limiting for Your SaaS Application</h2>
+      <p>How should we design a SaaS application to deal with a rise in incoming traffic? Of course, the answer is to design it for scalability to handle increased load, be it sudden burst of traffic or steady usage growth.</p>
+      <p>But what is the degree to which our system is scalable? What kind of sudden usage spikes can it safely handle? The problem with horizontal scaling might be that it would take time to spin up new instances to handle increased load. Plus, it might be too expensive to provision more resources to handle it (especially given that some traffic might be not worth handling for different reasons). That’s an important consideration, and the architect should be able to answer these questions. An architectural tactic to enforce such constraints is called Rate Limiting (sometimes called throttling).</p>
+      <p>There are many situations that could cause dangerous traffic spikes:</p>
+      <ul><li>Legitimate usage patterns during “hot” periods (e.g. Black Friday)</li><li>Viral social media moments or influencer mentions</li><li>Malicious traffic trying to bring our systems down</li><li>Users trying to run load tests or some automations involving our APIs</li><li>Bot scrapers and competitive intelligence gathering</li></ul>
+      <p>In this article we’ll review common approaches and architectures for designing rate limiting systems and rate limiting algorithms.</p>
+      <h2>Common assumptions about rate limiting</h2>
+      <ul><li><strong>Shared rate limiting usually makes sense for simple use cases.</strong> If we want to make tenant-aware rate limiting, or enforce custom application logic to check if limits are exceeded, then we need to implement it within the service itself or use a more sophisticated standalone rate limiting service that supports custom rules.</li><li><strong>We often can relax consistency requirements:</strong> it’s not a big deal if we let through some requests. We need design for strict guarantees (e.g. if every request is very expensive), but this comes with increased cost and complexity.</li><li><strong>Rate limits should be communicated clearly to clients</strong> through standard headers (RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset) to prevent retry storms.</li><li><strong>Different endpoints may need different rate limits</strong> based on their computational cost and business importance.</li><li>When a user hits the rate limit, the server will return the <code>429</code> error code indicating that too many requests have been issued.</li></ul>
+      <h2>Rate limiting dimensions</h2>
+      <p>There are different dimensions by which you can limit requests:</p>
+      <p><strong>Identity-based limiting:</strong></p>
+      <ul><li>IP Address: Simple but can be bypassed; problematic with shared NAT</li><li>User ID: Requires authentication; most accurate for logged-in users</li><li>API Key: Good for B2B APIs; allows different service tiers</li><li>Tenant/Organization: Essential for multi-tenant SaaS</li></ul>
+      <p><strong>Resource-based limiting:</strong></p>
+      <ul><li>Endpoint-specific limits based on computational cost</li><li>Operation cost where complex queries consume more “quota points”</li><li>Hierarchical limits (e.g., user limits within tenant limits)</li></ul>
+      <h2>Designing rate limiting system</h2>
+      <p>There are several approaches to building rate limiting systems:</p>
+      <p>Implementation Level Best For Key Trade-offs <strong>API Gateway</strong> Simple protection, DDoS defense Centralized but less flexible; added latency <strong>Standalone Service</strong> Complex rules, shared across services Reusable but introduces dependency; potential bottleneck <strong>Within Service</strong> Custom business logic, service-specific needs No network overhead but harder to manage globally</p>
+      <p>For cloud-based SaaS applications, a <strong>hybrid approach</strong> often makes sense: basic rate limits at the API gateway level, with sophisticated business logic rate limiting within services where needed.</p>
+      <h2>Stateful vs. stateless approaches</h2>
+      <p><strong>Stateless</strong> (using external storage like Redis):</p>
+      <ul><li>Horizontally scalable, simple deployment</li><li>Network latency and external dependency</li><li>Better for distributed systems</li></ul>
+      <p><strong>Stateful</strong> (in-memory storage):</p>
+      <ul><li>Very low latency, no external dependencies</li><li>Requires sticky sessions, complex rebalancing</li><li>Better for single-instance or small deployments</li></ul>
+      <h2>Distributed systems challenges</h2>
+      <p><strong>Clock Skew</strong>: Servers may have different times. Solutions include NTP synchronization and tolerance windows.</p>
+      <p><strong>Network Partitions</strong>: During splits, rate limiting state may diverge. Choose between accepting temporary inconsistency or implementing quorum-based decisions.</p>
+      <p><strong>Consistency Guarantees</strong>:</p>
+      <ul><li>Eventually Consistent: Acceptable for most APIs</li><li>Strongly Consistent: Required for billing-critical operations</li><li>Best Effort: Lowest latency but least accurate</li></ul>
+      <h2>Rate limiting algorithms</h2>
+      <h2>Token Bucket</h2>
+      <p>A bucket holds tokens consumed by requests and refilled at a constant rate. Allows burst traffic up to bucket capacity while maintaining long-term rate limits. Uses lazy evaluation — no background process needed — “virtual” tokens usage/refill are calculated at request time.</p>
+      <p><strong>Best for:</strong> General API rate limiting where some burstiness is acceptable</p>
+      <p><strong>Trade-off:</strong> Simple and efficient but requires careful capacity planning</p>
+      <h2>Leaky Bucket</h2>
+      <p>Requests fill a bucket that “leaks” at a constant rate, enforcing smooth output. Can be implemented with an actual queue or virtually with counters.</p>
+      <p><strong>Best for:</strong> Protecting backend systems that cannot handle bursts</p>
+      <p><strong>Trade-off:</strong> Smooth rate but may delay legitimate traffic</p>
+      <h2>Fixed Window Counter</h2>
+      <p>Count requests in fixed time windows (e.g., each minute). Simple but suffers from boundary spikes where users can make double the limit by timing requests around window boundaries.</p>
+      <p><strong>Best for:</strong> Internal metrics, non-critical limiting</p>
+      <p><strong>Trade-off:</strong> Very simple but least accurate</p>
+      <h2>Sliding Window Log</h2>
+      <p>Stores timestamps of all requests and counts those within the sliding window. Most accurate but memory-intensive.</p>
+      <p><strong>Best for:</strong> When accuracy is critical and request volume is manageable</p>
+      <p><strong>Trade-off:</strong> Perfect accuracy but high memory usage</p>
+      <h2>Sliding Window Counter</h2>
+      <p>Hybrid approach using weighted averages of current and previous fixed windows. Approximates sliding window behavior efficiently.</p>
+      <p><strong>Best for:</strong> Production systems needing good accuracy with reasonable resource usage</p>
+      <p><strong>Trade-off:</strong> Good balance but still an approximation</p>
+      <h2>GCRA (Generic Cell Rate Algorithm)</h2>
+      <p>Used by Redis-cell, tracks when the next request should be allowed based on emission intervals. Provides smooth limiting with exact wait times.</p>
+      <p><strong>Best for:</strong> When you need very smooth rate limiting with minimal memory</p>
+      <p><strong>Trade-off:</strong> More complex to understand but very efficient</p>
+      <h2>Determining appropriate rate limits</h2>
+      <p><strong>Capacity-based approach:</strong></p>
+      <ol><li>Load test endpoints to find breaking points</li><li>Apply safety margins (typically 70–80% of maximum)</li><li>Consider downstream dependencies</li></ol>
+      <p><strong>Business-driven approach:</strong></p>
+      <ol><li>Analyze legitimate usage patterns</li><li>Set limits above 99th percentile of normal usage</li><li>Create different tiers for customer segments</li></ol>
+      <p><strong>Key metrics to monitor:</strong></p>
+      <ul><li>Hit rate: What percentage of users hit limits?</li><li>Denial patterns: Are denials clustered or distributed?</li><li>Customer impact: Are paying customers affected?</li><li>Recovery time: How long do users stay limited?</li></ul>
+      <h2>Client-side best practices</h2>
+      <p>Clients should implement:</p>
+      <ul><li><strong>Exponential backoff with jitter</strong> to prevent thundering herd</li><li><strong>Respect Retry-After headers</strong> when provided</li><li><strong>Proactive client-side limiting</strong> to avoid hitting server limits</li><li><strong>Circuit breakers</strong> to fail fast when consistently rate limited</li></ul>
+      <h2>Rate Limiting Solutions Comparison</h2>
+      <p>Solution Best For Key Consideration <strong>Nginx rate limiting</strong> Simple protection at web server level Limited to basic request/connection rates <strong>Redis-cell</strong> Distributed systems needing consistency Requires Redis infrastructure <strong>AWS API Gateway</strong> AWS-based serverless applications Vendor lock-in, cost at scale <strong>Kong Gateway</strong> Complex microservice architectures Steeper learning curve <strong>Cloudflare</strong> Global, public-facing APIs Limited customization options <strong>Custom Implementation</strong> Specific business requirements Development and maintenance burden</p>
+      <h2>Key takeaways</h2>
+      <ol><li><strong>Start simple, evolve as needed</strong> — Don’t over-engineer initially</li><li><strong>Choose algorithms based on requirements</strong> — Token bucket for most cases, GCRA for smooth limiting</li><li><strong>Layer your defenses</strong> — Multiple levels provide better protection</li><li><strong>Monitor and adapt</strong> — Rate limits should evolve with usage patterns</li><li><strong>Design for failure</strong> — Plan for when rate limiting itself fails</li><li><strong>Communicate clearly</strong> — Good error messages and headers help clients adapt</li><li><strong>Balance protection with user experience</strong> — Limits should be rarely noticed by legitimate users</li></ol>
+      <p>Rate limiting is not just about preventing abuse — it’s about ensuring quality service for all users while protecting your infrastructure. The best rate limiting system is invisible to good actors while effectively stopping bad ones.</p>
+    </article>
+
+    <footer class="site-footer">
+      <span>© Alex Razkevich</span>
+      <span><a href="https://github.com/razkevich">GitHub</a></span>
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Art of Drawing Boundaries: Mastering Decomposition in Software Architecture · Alex Razkevich</title>
+  <meta name="description" content="Software architecture, at its core, is about defining components and how they relate to each other. But what makes an architect draw a rectangle on their diagra" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <div class="site-brand">
+        <p class="site-title"><a href="/">Alex Razkevich</a></p>
+        <p class="site-tag">Staff Infrastructure Engineer · GCP · reliability · system design</p>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <a href="/">Posts</a>
+        <a href="https://github.com/razkevich">GitHub</a>
+      </nav>
+    </header>
+
+    <p class="back"><a href="/">← All posts</a></p>
+    <h1 class="page-title">The Art of Drawing Boundaries: Mastering Decomposition in Software Architecture</h1>
+    <p class="meta">August 2, 2025</p>
+    <article class="prose">
+      <blockquote><p><em>“Software architecture is the set of structures needed to reason about the system, which comprise software elements, relations among them, and properties of both.” — Len Bass, Paul Clements, and Rick Kazman</em></p></blockquote>
+      <img alt="" loading="lazy" src="images/0_BGhCky-Xu6ylHUWF.jpg" />
+      <p class="caption">Photo by GuerrillaBuzz on Unsplash</p>
+      <p>Software architecture, at its core, is about defining components and how they relate to each other. But what makes an architect draw a rectangle on their diagram? What invisible forces pull pieces of functionality together or push them apart? This fundamental question — how we define the boundaries of our components — lies at the heart of every architectural decision we make.</p>
+      <p><strong>Software decomposition</strong> is the process of breaking down complex systems into smaller, more manageable components. It’s about deciding where to draw the lines that separate one piece of functionality from another, whether those boundaries exist as modules within a single process, services across a network, or teams within an organization. The goal isn’t just to make things smaller — it’s to create boundaries that support understanding, change, and growth.</p>
+      <p>Decomposition isn’t just about microservices or distributed systems. Whether you’re building a monolith, a service-oriented architecture, or a micro-frontend, the principles of decomposition remain central to creating maintainable, scalable, and comprehensible systems. In fact, getting decomposition right in a monolith often requires more discipline than in distributed systems, where boundaries are enforced by network calls and separate deployments.</p>
+      <h2>Forces That Shape Boundaries</h2>
+      <p>When architects make decomposition decisions, they’re responding to multiple, often competing forces. Understanding these forces and their trade-offs is essential to making informed architectural choices.</p>
+      <h2>Domain Functionality: The Business-Driven Boundary</h2>
+      <p>The most powerful force in boundary creation comes from the business domain itself. Domain-Driven Design (DDD) teaches us that the <strong>problem space</strong> — the real-world business domain we’re trying to model — should guide our <strong>solution space</strong> decomposition. Through careful domain analysis, we identify <strong>bounded contexts</strong>, which are explicit boundaries where a particular domain model applies, and these bounded contexts directly inform how we structure our software components.</p>
+      <p>Consider an e-commerce system. Domain analysis reveals distinct business capabilities that naturally suggest service boundaries:</p>
+      <ul><li><strong>Customer Management</strong>: User registration, profiles, authentication, and preferences</li><li><strong>Product Catalog</strong>: Product information, categories, search, and recommendations</li><li><strong>Order Processing</strong>: Shopping cart, checkout, payment processing, and order fulfillment</li><li><strong>Inventory Management</strong>: Stock levels, reservations, and supply chain coordination</li></ul>
+      <p>Each of these represents a cohesive business capability that can be owned by a dedicated team and implemented as a separate component or service. By aligning our architectural boundaries with these natural business boundaries, we create systems that are easier for business stakeholders to understand and for development teams to modify and evolve.</p>
+      <h2>Quality Attributes: The Non-Functional Drivers</h2>
+      <p>Quality attributes — performance, security, availability, scalability, maintainability, etc. — exert tremendous influence on boundary decisions. These architectural qualities often conflict with pure domain-driven boundaries, creating tension that architects must carefully navigate.</p>
+      <p>Consider a social media platform where domain logic suggests separating “User Profiles” and “User Activities” into different bounded contexts. However, performance requirements might force you to co-locate user profile data with their recent activity data in the same service to avoid expensive joins and network calls for the newsfeed generation. Similarly, a financial system might need to split a single “Trading” domain across multiple services for security isolation — separating order entry, risk validation, and trade execution even though they logically belong together.</p>
+      <p><strong>This tension is normal and often necessary.</strong> Pure domain boundaries optimize for business understanding and team organization, while quality-driven boundaries optimize for system behavior under load, failure conditions, or security constraints. The key is making these trade-offs consciously and documenting the reasoning. Sometimes the right architectural decision is to sacrifice some domain purity for critical non-functional requirements.</p>
+      <p>A non-comprehensive list of quality attributes and their decomposition influences:</p>
+      <p>Quality Attribute Definition Decomposition Influence <strong>Performance</strong> Response time, throughput, resource utilization May favor larger components to avoid network overhead; suggests co-locating frequently communicating functions <strong>Scalability</strong> Ability to handle increased load Drives toward finer-grained decomposition to scale components independently <strong>Security</strong> Protection against threats and unauthorized access Creates additional boundaries for access control; suggests separating sensitive data processing <strong>Availability</strong> System uptime and fault tolerance Encourages isolation of critical vs. non-critical functions; suggests redundancy boundaries <strong>Maintainability</strong> Ease of modification and enhancement Favors clear, stable interfaces and separation of concerns <strong>Deployability</strong> Ease of releasing changes Drives toward independent deployment units aligned with change frequency</p>
+      <h2>Technical and Organizational Constraints</h2>
+      <p>Technical constraints — deployment environments, existing systems, platform limitations, technology choices — create practical boundaries that significantly influence decomposition decisions. These constraints often override ideal domain or other boundaries, forcing pragmatic compromises.</p>
+      <p>Conway’s Law reminds us that “organizations which design systems are constrained to produce designs which are copies of the communication structures of these organizations.” Team structure, communication patterns, skill distribution, and organizational boundaries inevitably shape how systems evolve. A team structure with front-end and back-end specialists might naturally lead to API-based boundaries, while full-stack teams might favor feature-based decomposition.</p>
+      <h2>Additional Decomposition Drivers</h2>
+      <p>Several other forces influence how we structure software components:</p>
+      <p><strong>Change Frequency</strong>: Components that change at different rates should be separated. User interfaces typically change more frequently than core business logic, which changes more often than foundational infrastructure.</p>
+      <p><strong>Team Ownership</strong>: Each component should have a clear owner. Shared ownership often leads to coordination overhead and unclear responsibility, while clear boundaries enable team autonomy.</p>
+      <p><strong>Compliance and Regulation</strong>: Regulatory requirements often dictate specific boundaries. Financial systems might need to separate trading logic from reporting, while healthcare systems must isolate patient data handling.</p>
+      <p><strong>Technology Diversity</strong>: Different components might benefit from different technologies. Data processing might use Python, real-time features might use Go, and user interfaces might use React.</p>
+      <p><strong>Data Gravity</strong>: Operations tend to cluster around where data lives. This principle suggests that components with high-frequency data access patterns should be co-located. Data gravity also influences physical decomposition — keeping related data in the same database, data center, or geographic region can dramatically impact performance and compliance.</p>
+      <h2>Guiding Principles for Boundary Design</h2>
+      <h2>High Cohesion, Low Coupling</h2>
+      <p>The decomposition drivers we discussed earlier (domain boundaries, quality attributes, organizational constraints) and the principle of high cohesion and low coupling are really two complementary lenses for looking at the same fundamental problem. The drivers provide the business and technical forces that suggest where boundaries might be beneficial, while cohesion and coupling principles help us evaluate whether the boundaries we’ve drawn are actually good ones. They speak about the same underlying concepts but in different languages — domain-driven design naturally leads to high cohesion within bounded contexts and low coupling between them.</p>
+      <p>This principle, first articulated by Larry Constantine in the 1970s, remains the cornerstone of good decomposition. It applies at every level of software design — from individual functions and classes to modules, services, and entire systems.</p>
+      <p><strong>Cohesion</strong> refers to how closely related and focused the responsibilities of a single component are. High cohesion means that elements within a component work together toward a common purpose. Types of cohesion, ranked from best to weakest:</p>
+      <ul><li><strong>Functional cohesion</strong>: Elements work together to accomplish a single, well-defined task <em>(best — creates focused, reusable components)</em></li><li><strong>Data cohesion</strong>: Elements operate on the same data structures <em>(good — natural grouping around data)</em></li><li><strong>Change cohesion</strong>: Elements that change for the same reasons <em>(good — aligns with business evolution)</em></li><li><strong>Temporal cohesion</strong>: Elements that are accessed or modified at the same time <em>(weaker — may indicate missing abstraction)</em></li></ul>
+      <p>High cohesion is important because it makes components easier to understand, test, maintain, and reuse. When a component has a clear, focused purpose, developers can reason about it in isolation.</p>
+      <p><strong>Coupling</strong> refers to the degree of interdependence between components. Low coupling means that components can operate independently with minimal knowledge of each other’s internals. Types of coupling, ranked from best to worst:</p>
+      <ul><li><strong>Data coupling</strong>: Components share only simple data <em>(best — minimal dependencies)</em></li><li><strong>Stamp coupling</strong>: Components share data structures <em>(acceptable — common in well-designed APIs)</em></li><li><strong>Control coupling</strong>: One component controls the flow of another <em>(problematic — creates tight dependencies)</em></li><li><strong>Content coupling</strong>: One component directly accesses another’s internal data <em>(worst — breaks encapsulation)</em></li></ul>
+      <p>Low coupling is crucial because it enables independent development, testing, deployment, and scaling. When components are loosely coupled, changes in one component are less likely to require changes in others. This principle directly drives the microservices philosophy: each service should be independently deployable, scalable, and maintainable. The goal is to create “shared nothing” architectures where services communicate only through well-defined interfaces, enabling teams to work autonomously.</p>
+      <p><strong>Architecture Quantums and Coupling Boundaries</strong></p>
+      <p>An architecture quantum, as defined by Neal Ford and Mark Richards in “Software Architecture: The Hard Parts,” represents “an independently deployable artifact with high functional cohesion, high static coupling, and synchronous dynamic coupling.” This concept bridges our decomposition drivers with coupling principles — quantum boundaries often align with domain boundaries, team ownership, and deployment independence we discussed earlier.</p>
+      <p>From a coupling perspective, quantums help us understand:</p>
+      <ul><li><strong>Static coupling</strong>: Shared databases, frameworks, and operational dependencies (acceptable within quantums, problematic across them)</li><li><strong>Dynamic coupling</strong>: Runtime communication patterns (synchronous within quantums for consistency, asynchronous across quantums for independence)</li></ul>
+      <p>Not all coupling is bad. Good coupling aligns with your architectural goals:</p>
+      <ul><li><strong>Acceptable coupling</strong>: Between components that change together, belong to the same business capability, or need strong consistency</li><li><strong>Problematic coupling</strong>: Between components owned by different teams, with different scaling requirements, or different change frequencies</li></ul>
+      <h2>The Dependency Rule</h2>
+      <p>Dependencies should point toward stability. Higher-level policies — the core business rules and use cases that define what your system does — should not depend on lower-level details like databases, frameworks, or external APIs. This principle, central to Clean Architecture (Robert Martin), ensures that business logic remains stable while implementation details can evolve.</p>
+      <p>This means:</p>
+      <ul><li>Business entities should not depend on databases</li><li>Use cases should not depend on UI frameworks</li><li>Core domain logic should not depend on external services</li></ul>
+      <p>Hexagonal Architecture supports this principle by creating clear dependency directions, with business logic at the center surrounded by adapters that handle external concerns.</p>
+      <img alt="" loading="lazy" src="images/1_8pwFoUgl2lBUa__fWkWQcw.png" />
+      <h2>Information Hiding and Interface Design</h2>
+      <p>Well-designed boundaries expose only what consumers actually need, creating stable interfaces that hide internal implementation details. This principle, introduced by David Parnas in the 1970s, is fundamental to managing complexity in large systems.</p>
+      <p>Information hiding is important because it:</p>
+      <ul><li>Reduces the impact of changes by localizing implementation details</li><li>Simplifies the mental model consumers need to understand</li><li>Enables parallel development by defining clear contracts</li><li>Supports testing by providing stable interfaces to mock</li></ul>
+      <p>Good interfaces are minimal, stable, and focused on the consumer’s needs rather than the provider’s implementation convenience.</p>
+      <p>This principle applies at multiple levels:</p>
+      <ul><li><strong>Code level</strong>: Java modules (Project Jigsaw) expose only specific packages while hiding implementation details</li><li><strong>Service level</strong>: Microservices expose REST APIs while hiding internal data models and business logic</li><li><strong>System level</strong>: Public APIs hide the complexity of entire platforms (like how Stripe’s payment API hides the complexity of payment processing)</li><li><strong>Team level</strong>: Well-defined team interfaces specify what services a team provides and consumes, hiding internal team processes</li></ul>
+      <h2>Common Anti-patterns and Solutions</h2>
+      <h2>The Distributed Monolith</h2>
+      <p>Services that are separated physically but not logically, creating the complexity of distributed systems without the benefits of true independence. These systems often require coordinated deployments across multiple services to implement simple features.</p>
+      <p><strong>Solutions</strong>:</p>
+      <ul><li>Focus on business boundaries rather than technical ones</li><li>Ensure services can be developed, tested, and deployed independently</li><li>Minimize cross-service transactions and synchronous communication</li><li>Design services around business capabilities, not data entities</li></ul>
+      <h2>The Anemic Component</h2>
+      <p>Components — whether services, modules, or classes — that are too small to justify their existence as separate units. They typically contain little logic and primarily serve as data pass-through mechanisms.</p>
+      <p><strong>Solutions</strong>:</p>
+      <ul><li>Combine related functionality into cohesive business capabilities</li><li>Focus on meaningful business operations rather than CRUD operations</li><li>Ensure each component has sufficient logic to warrant separate existence</li><li>Apply the “could this be a function instead?” test</li></ul>
+      <h2>The God Component</h2>
+      <p>Components that try to do too much, violating single responsibility and becoming bottlenecks for multiple teams and use cases.</p>
+      <p><strong>Solutions</strong>:</p>
+      <ul><li>Split by business capability using domain-driven design</li><li>Extract shared concerns into separate, focused components</li><li>Identify and separate different reasons for change</li><li>Look for natural seams in the business domain</li></ul>
+      <h2>Cross-Cutting Concerns Everywhere</h2>
+      <p>Implementing infrastructure concerns like logging, security, or caching within each business component instead of extracting them as proper cross-cutting concerns.</p>
+      <p><strong>Example</strong>: Every service implementing its own authentication logic instead of using a shared authentication service or framework.</p>
+      <p><strong>Solutions</strong>:</p>
+      <ul><li>Extract infrastructure concerns into shared libraries or services</li><li>Use aspect-oriented programming or middleware patterns</li><li>Implement concerns at the platform level (API gateways, service mesh)</li></ul>
+      <h2>Premature Decomposition</h2>
+      <p>Breaking apart systems before understanding the domain boundaries, often leading to chatty interfaces and complex coordination.</p>
+      <p><strong>Solutions</strong>:</p>
+      <ul><li>Start with a modular monolith to understand boundaries</li><li>Use patterns like Strangler Fig to extract services gradually</li><li>Focus on learning domain boundaries before implementing them</li><li>Prefer larger, cohesive components over many small ones initially</li></ul>
+      <h2>Evolution and Observability</h2>
+      <p>Boundaries must evolve over time as understanding deepens and requirements change. Supporting this evolution requires deliberate design for observability and change.</p>
+      <p><strong>Why Evolution Matters</strong>: Initial decomposition decisions are rarely perfect. Domain understanding grows, team structures change, performance requirements shift, and new technologies emerge. Systems that can’t evolve their boundaries become rigid and eventually obsolete.</p>
+      <p><strong>Architectural Fitness Functions</strong>: These are automated tests that verify boundary integrity over time. Examples include:</p>
+      <ul><li>Dependency analysis to detect unwanted coupling</li><li>Performance tests to verify boundary efficiency</li><li>Contract tests to ensure interface stability</li><li>Complexity metrics to identify growing God components</li></ul>
+      <p><strong>Comprehensive Monitoring</strong>: Understanding how boundaries perform in practice requires visibility into:</p>
+      <ul><li><strong>Metrics</strong>: Response times, error rates, throughput across component boundaries</li><li><strong>Logs</strong>: Structured logging that traces requests across boundaries</li><li><strong>Traces</strong>: Distributed tracing to understand request flows and bottlenecks</li><li><strong>Dependency mapping</strong>: Real-time understanding of component interactions</li></ul>
+      <p><strong>Gradual Migration Patterns</strong>: Change boundaries safely using proven patterns:</p>
+      <ul><li><strong>Strangler Fig</strong>: Gradually replace old components with new ones</li><li><strong>Parallel runs</strong>: Run old and new implementations side-by-side for validation</li><li><strong>Feature toggles</strong>: Control boundary changes through configuration</li><li><strong>Branch by abstraction</strong>: Hide boundary changes behind stable interfaces</li></ul>
+      <p><strong>Tools for Evolution</strong>: Modern tools like Spring Modulith enable creating modular monoliths with clear internal boundaries that can later be extracted as separate deployable units when the benefits justify the complexity.</p>
+      <h2>Practical Guidelines</h2>
+      <p><strong>A systematic approach to boundary design:</strong></p>
+      <p><strong>Start with business boundaries</strong> using domain-driven design</p>
+      <ul><li>Conduct domain modeling sessions with business experts</li><li>Identify bounded contexts and their relationships</li><li>Map business capabilities to potential component boundaries</li></ul>
+      <p><strong>Prioritize independent deployability</strong> as a key design constraint</p>
+      <ul><li>Each component should be deployable without coordinating with others</li><li>Minimize shared databases and synchronous dependencies</li><li>Design for graceful degradation when dependencies fail</li></ul>
+      <p><strong>Design for change</strong> by separating stable policies from volatile implementations</p>
+      <ul><li>Keep business rules stable and infrastructure details flexible</li><li>Use dependency inversion to protect core logic from external changes</li><li>Version interfaces explicitly and design for backward compatibility</li></ul>
+      <p><strong>Measure and monitor coupling</strong> to understand actual vs. intended boundaries</p>
+      <ul><li>Track cross-boundary communication patterns</li><li>Monitor deployment coordination requirements</li><li>Measure team productivity and development velocity</li></ul>
+      <p><strong>Make trade-offs explicit</strong> through Architecture Decision Records</p>
+      <ul><li>Document why boundaries were drawn where they are</li><li>Record the alternatives considered and trade-offs made</li><li>Plan for revisiting decisions as context changes</li></ul>
+      <h2>Conclusion</h2>
+      <p>Drawing boundaries in software architecture is an art informed by science. The most successful architects understand that perfect boundaries don’t exist — only boundaries appropriate for the current context, constraints, and goals.</p>
+      <p>The goal isn’t to eliminate coupling entirely — it’s to ensure that the coupling you do have is intentional, well-understood, and aligned with your architectural goals. Good boundaries make the right things easy and the wrong things hard. They enable teams to work independently while ensuring the system works cohesively.</p>
+      <p>As you face decomposition challenges, remember that boundaries should make tomorrow’s changes easier, not harder. Start simple, learn from real usage patterns, and evolve your boundaries as your understanding grows. The most enduring architectures are those that can adapt their boundaries to changing needs while maintaining their essential integrity.</p>
+    </article>
+
+    <footer class="site-footer">
+      <span>© Alex Razkevich</span>
+      <span><a href="https://github.com/razkevich">GitHub</a></span>
+    </footer>
+  </div>
+</body>
+</html>

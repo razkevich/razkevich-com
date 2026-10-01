@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kafka Exactly-Once Semantics: How It Really Works · Alex Razkevich</title>
+  <meta name="description" content="Exactly-once message processing has long been the “holy grail” of distributed systems. For decades, developers were forced to choose between losing messages (at" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <div class="site-brand">
+        <p class="site-title"><a href="/">Alex Razkevich</a></p>
+        <p class="site-tag">Staff Infrastructure Engineer · GCP · reliability · system design</p>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <a href="/">Posts</a>
+        <a href="https://github.com/razkevich">GitHub</a>
+      </nav>
+    </header>
+
+    <p class="back"><a href="/">← All posts</a></p>
+    <h1 class="page-title">Kafka Exactly-Once Semantics: How It Really Works</h1>
+    <p class="meta">July 30, 2025</p>
+    <article class="prose">
+      <img alt="" loading="lazy" src="images/0_HJNS0rxR5Kk3NGRV.jpg" />
+      <p>Exactly-once message processing has long been the “holy grail” of distributed systems. For decades, developers were forced to choose between losing messages (at-most-once) or handling duplicates (at-least-once). Kafka’s breakthrough implementation in 2017 changed this landscape by moving exactly-once complexity into the messaging infrastructure itself.</p>
+      <p>This article explains how exactly-once semantics actually work under the hood, from the perspective of each component in the system, giving you the technical understanding to implement similar guarantees in your own distributed systems.</p>
+      <h2>The Core Challenge: Why Exactly-Once is Hard</h2>
+      <p>The fundamental problem stems from the distributed nature of message systems. Consider this sequence:</p>
+      <ol><li>Producer sends message to broker</li><li>Broker successfully stores message</li><li>Network fails before broker can acknowledge</li><li>Producer assumes failure and retries</li><li>Result: duplicate message</li></ol>
+      <p>Traditional solutions pushed this complexity to applications:</p>
+      <ul><li><strong>Manual deduplication</strong>: Track processed message IDs in databases</li><li><strong>Idempotent operations</strong>: Design business logic to handle duplicates safely</li><li><strong>Two-phase commit</strong>: Coordinate transactions across systems (expensive and fragile)</li></ul>
+      <p>The innovation in modern systems like Kafka is recognizing that this problem is better solved at the infrastructure level with predictable, reusable techniques.</p>
+      <h2>The Producer Side: Generating Unique, Sequenced Messages</h2>
+      <p>From the producer’s perspective, exactly-once semantics are achieved through two complementary mechanisms: <strong>idempotent publishing</strong> for single-partition operations and <strong>transactional publishing</strong> for multi-partition operations.</p>
+      <h2>Producer Idempotency: Sequence Numbers per Partition</h2>
+      <p>Every producer gets assigned a unique <strong>Producer ID (PID)</strong> when it starts up. This isn’t just a random number — it’s managed by the broker and tied to the producer’s lifecycle.</p>
+      <p>Along with each message batch, the producer includes a <strong>sequence number</strong> that starts at 0 and increments monotonically for each partition:</p>
+      <pre><code>Producer ID: 12345
+      Partition 0: [seq=0] [seq=1] [seq=2] [seq=3] ...
+      Partition 1: [seq=0] [seq=1] [seq=2] [seq=3] ...</code></pre>
+      <p>Sequence numbers are assigned when the batch is <strong>created</strong> on the producer side, not when it’s sent. This means that even if a producer retries sending a batch multiple times due to network timeouts, the sequence numbers remain constant.</p>
+      <p>This design handles the most common failure scenarios:</p>
+      <ul><li><strong>Network retries</strong>: Same sequence number sent multiple times</li><li><strong>Producer restarts</strong>: New PID prevents confusion with old sequences</li><li><strong>Partial broker failures</strong>: Sequence tracking survives most broker restarts</li></ul>
+      <h2>Producer Sessions: Handling Crashes and Zombies</h2>
+      <p>The Producer ID system is more sophisticated than it initially appears. When a producer crashes and restarts, you could have a “zombie” producer that continues sending messages after a new instance has started.</p>
+      <p>This is solved through <strong>epoch numbers</strong> — a separate 16-bit counter (distinct from the PID) that increments each time a producer with the same <code>transactional.id</code> (a user-configured string identifier that represents the logical identity of a service, like "payment-service" for all pods in a K8s deployment) initializes:</p>
+      <pre><code>Session 1: PID=12345, Epoch=0 (starts sending messages)
+        ↓ (producer crashes)
+      Session 2: PID=12345, Epoch=1 (new instance starts)
+        ↓ (messages from Session 1 are now rejected)</code></pre>
+      <p>When a producer has a <code>transactional.id</code>, the <strong>PID stays the same</strong> across restarts (enabling sequence tracking continuity), but the <strong>epoch increments</strong> (enabling zombie fencing). Without <code>transactional.id</code>, each restart gets a completely new PID and loses idempotency guarantees.</p>
+      <p><strong>Fencing mechanism</strong>: Higher epoch numbers automatically “fence out” previous instances. This prevents zombie producers from corrupting the message stream by ensuring that only the latest producer session can successfully send messages — any delayed or duplicate messages from old sessions are rejected, maintaining exactly-once guarantees even across producer crashes and restarts.</p>
+      <h2>Transactional Publishing: Multi-Partition Atomicity</h2>
+      <p>For operations that span multiple partitions or topics, producers use <strong>transactional APIs</strong>. The producer coordinates with a <strong>Transaction Coordinator</strong> to ensure atomic commits across all involved partitions. Crucially, transactions make use of exactly once guarantees in individual partitions to provide multi partition atomicity and exactly one guarantees. It does it by using distributed transactions, but limited to Kafka brokers within a single cluster — it doesn’t span external systems like databases.</p>
+      <p><strong>The transaction flow from producer’s perspective</strong>:</p>
+      <ol><li><strong>Begin transaction</strong>: Get transaction ID from coordinator</li><li><strong>Send messages</strong>: to multiple partitions/topics (all marked as part of this transaction) — they are guaranteed to be sent exactly once</li><li><strong>Commit transaction</strong>: Tell coordinator to atomically commit across all partitions</li><li><strong>Handle coordinator response</strong>: Success means all partitions committed, failure means all aborted</li></ol>
+      <p>Transactions can span completely different topics, not just partitions within a single topic. This enables complex multi-service operations to be atomic.</p>
+      <h2>The Broker Side: Validation, Coordination, and Storage</h2>
+      <p>From the broker’s perspective, exactly-once semantics require maintaining additional state and implementing sophisticated validation logic.</p>
+      <h2>Sequence Number Validation</h2>
+      <p>Each broker maintains an in-memory map of the last committed sequence number for each active PID/partition combination. When a message batch arrives:</p>
+      <ul><li><strong>If sequence &lt; expected</strong>: Duplicate — discard silently</li><li><strong>If sequence = expected</strong>: Also duplicate — already processed</li><li><strong>If sequence &gt; expected</strong>: Gap detected — reject with error</li><li><strong>If sequence = expected + 1</strong>: Process normally and increment</li></ul>
+      <p><strong>Persistence for crash recovery</strong>: Sequence numbers are persisted periodically in <code>.snapshot</code> files. When a broker crashes and restarts, it rebuilds the sequence tracking map by reading snapshots and replaying log segments.</p>
+      <p><strong>Memory management</strong>: The broker only tracks sequences for active producers. Old PID/partition mappings are cleaned up after producer sessions expire.</p>
+      <h2>Transaction Coordination</h2>
+      <p>The <strong>Transaction Coordinator</strong> is a special broker component that manages the lifecycle of multi-partition transactions. It maintains transaction state in a replicated internal topic called <code>__transaction_state</code>.</p>
+      <p><strong>Transaction state progression</strong>:</p>
+      <pre><code>Empty → Ongoing → PrepareCommit → CompleteCommit
+               ↓
+            PrepareAbort → CompleteAbort</code></pre>
+      <p><strong>Two-phase commit implementation</strong>:</p>
+      <ol><li><strong>Phase 1 (Prepare)</strong>: Coordinator writes “PrepareCommit” to transaction log</li><li><strong>Phase 2 (Commit)</strong>: Coordinator writes commit markers to all participating partitions</li><li><strong>Completion</strong>: Coordinator writes “CompleteCommit” to transaction log</li></ol>
+      <p>The coordinator must handle the case where a transaction coordinator itself crashes mid-transaction. The replicated transaction log allows recovery coordinators to complete or abort in-flight transactions.</p>
+      <h2>Transaction Deduplication</h2>
+      <p>Here’s where the broker implements the crucial insight that <strong>atomicity alone doesn’t provide exactly-once</strong>. Even if a transaction commits atomically across all partitions, the producer might not receive the success confirmation and retry the entire transaction.</p>
+      <p><strong>The deduplication check</strong>: When a producer attempts to commit a transaction, the coordinator checks:</p>
+      <ul><li>Has this producer session (PID + Epoch) already committed a transaction with this sequence?</li><li>If yes: Return success without re-executing (idempotency)</li><li>If no: Proceed with normal two-phase commit (atomicity)</li></ul>
+      <p>This combination of transaction-level idempotency with atomic commits is what delivers true exactly-once semantics.</p>
+      <h2>Control Records and Consumer Isolation</h2>
+      <p>For consumers configured with <code>isolation.level=read_committed</code>, brokers implement additional logic:</p>
+      <p><strong>Last Stable Offset (LSO)</strong>: Consumers can only read up to the offset of the first message belonging to an open (uncommitted) transaction. This prevents reading messages that might later be aborted.</p>
+      <p><strong>Control record filtering</strong>: Brokers filter out aborted transactional messages before sending them to consumers. Consumers never see messages from aborted transactions.</p>
+      <p><strong>Transaction markers</strong>: Special control records indicate transaction boundaries (commit/abort) but aren’t exposed as regular messages to applications.</p>
+      <h2>The Consumer Side: Processing Messages Exactly Once</h2>
+      <p>From the consumer’s perspective, exactly-once semantics aren’t just about message delivery — they’re about ensuring that message processing and state updates happen atomically.</p>
+      <h2>The Consumer Challenge</h2>
+      <p>Even with exactly-once delivery from the broker, consumers face their own exactly-once challenge:</p>
+      <ol><li>Receive and process messages</li><li>Update application state (database, cache, etc.)</li><li>Commit consumer offsets</li></ol>
+      <p><strong>The failure scenario</strong>: If the consumer crashes after step 2 but before step 3, it will reprocess the same messages without knowing they were already handled.</p>
+      <h2>Consumer Processing</h2>
+      <p>Kafka provides exactly-once semantics end-to-end (producer → broker → consumer) when properly configured. However, consumers can still see duplicate messages if they don’t manage offsets correctly — this is a configuration and usage issue, not a limitation of Kafka’s exactly-once guarantees. We’ll expand on it below.</p>
+      <p><strong>How exactly-once delivery works from the consumer side</strong>:</p>
+      <ul><li>Consumers with <code>isolation.level=read_committed</code> only see messages from committed transactions</li><li>The broker tracks consumer offsets and only delivers messages that haven’t been acknowledged yet</li><li>When offsets are committed (either manually or automatically), those messages won’t be delivered again</li><li>If a consumer crashes before committing offsets, it will receive the same messages again</li></ul>
+      <p>You might already be questioning: what if the application dies after committing business changes (e.g., withdrawing from an account) but before acking the Kafka message? We might get the worst outcome: the business change happened, but Kafka will redeliver the message (upon app restart), potentially causing duplicate processing (double withdrawal).</p>
+      <p>Even with such exactly-once delivery, there’s still a gap between processing messages and committing offsets that can cause duplicate processing effects. Several solutions to this challenge are possible:</p>
+      <ol><li><strong>Kafka transactional approach</strong>: Instead of performing business changes in the code directly, we can do it asynchronously: send a message to another component that will perform that non-idempotent business change. We can use Kafka transactions to coordinate offset commits (confirming that the message is read) with the production of that business message. That would make everything atomic within Kafka</li><li><strong>Manual offset management</strong>: Store consumer offsets in the same system as your business state (e.g., database) and commit them together using external transactions</li><li><strong>Idempotency approach</strong>: Design your processing logic to handle duplicate messages safely, making the system resilient to reprocessing regardless of offset timing</li></ol>
+      <h2>Performance and Operational Considerations</h2>
+      <p>Exactly-once semantics aren’t free. Here’s what you’re actually paying for these guarantees:</p>
+      <p><strong>The throughput hit</strong>: Idempotent producers add a modest 2–5% overhead (mainly from sequence number bookkeeping), but full transactions can slow things down by 10–20%. That coordination and two-phase commit process takes time.</p>
+      <p><strong>Memory costs</strong>: Brokers need to track sequence numbers for every active producer/partition combo, though this is usually pretty small. The bigger concern is consumers having to buffer messages from ongoing transactions — if you have long-running transactions, this can eat up memory quickly.</p>
+      <p><strong>Configuration gotchas</strong>: You can’t just flip a switch and get exactly-once. Producer idempotency requires keeping <code>max.in.flight.requests</code> at 5 or below to maintain message ordering. Transaction timeouts are tricky to tune - too short and legitimate operations get aborted, too long and failed producers block consumers. And you must use <code>acks=all</code> or your durability guarantees fall apart.</p>
+      <p>The bottom line: exactly-once semantics add complexity and overhead, but for systems where duplicates or losses create real business problems, it’s usually worth it.</p>
+      <h2>How Other Messaging Systems Handle This Problem</h2>
+      <p>Kafka isn’t the only game in town, but it’s definitely ahead of the pack when it comes to exactly-once semantics. Here’s how the competition stacks up:</p>
+      <p><strong>Many modern systems also support Exactly Once</strong>:</p>
+      <p><strong>Apache Pulsar</strong> takes a simpler approach — automatic broker-level deduplication using message IDs. It’s less sophisticated than Kafka’s system but much easier to use. You get basic exactly-once without much configuration headache.</p>
+      <p><strong>NATS JetStream</strong> offers flexible deduplication windows that you can tune, including “infinite deduplication” if you never want to see the same message twice. It’s powerful but requires more thoughtful configuration.</p>
+      <p><strong>Amazon Kinesis</strong> is probably the closest competitor to Kafka, but it stops short of true exactly-once semantics. It has sequence numbers per shard (similar to Kafka’s per-partition approach) and provides at-least-once delivery, but you still need to implement your own deduplication logic in applications.</p>
+      <p><strong>Amazon SQS FIFO</strong> provides deduplication using message deduplication IDs — you either provide your own ID or AWS generates one based on message content. But there’s a catch: it only works within 5-minute windows and is limited to single queues. Fine for simple use cases, but not for complex distributed operations.</p>
+      <p><strong>Amazon SNS FIFO</strong> works similarly to SQS FIFO — it uses deduplication IDs to prevent duplicate publishing within 5-minute windows. However, this only prevents duplicate messages from being published to the topic; it doesn’t provide cross-topic atomicity like Kafka transactions do.</p>
+      <p><strong>The systems that punt on the problem</strong>:</p>
+      <p><strong>RabbitMQ</strong> and <strong>ActiveMQ</strong> basically throw up their hands and say “figure it out yourself.” They provide at-least-once delivery and expect you to handle deduplication in your application code. It’s the old-school approach that pushes all the complexity to you.</p>
+      <p><strong>The takeaway</strong>: Most systems either provide basic deduplication OR atomic operations, but not both. Kafka’s innovation was recognizing that you need both idempotency and atomicity working together to truly solve the exactly-once problem.</p>
+      <h2>When Should You Actually Use it</h2>
+      <p>Exactly-once semantics are powerful but not always worth the complexity. Let’s break down when we absolutely need them versus when we’re probably overthinking things.</p>
+      <p><strong>We definitely need exactly-once when</strong>:</p>
+      <p><strong>Money is involved</strong> — Payment processing, trading systems, accounting — basically anything where duplicate transactions mean someone loses real money or regulatory agencies start asking uncomfortable questions.</p>
+      <p><strong>Inventory matters</strong> — E-commerce stock levels, supply chain management, anything where double-processing means you oversell products and have angry customers calling your support team.</p>
+      <p><strong>Compliance is watching</strong> — Healthcare records, financial reporting, audit systems — when regulators require data accuracy and “oops, we processed that twice” isn’t an acceptable explanation.</p>
+      <p><strong>We can probably skip it when</strong>:</p>
+      <p><strong>Analytics and metrics</strong> — Processing millions of page views where being off by 0.1% doesn’t change business decisions. The performance hit usually isn’t worth perfect accuracy for this stuff.</p>
+      <p><strong>Operational monitoring</strong> — System logs, performance metrics, health checks — you care more about low latency than perfect counts. Missing the occasional data point is better than slowing down your entire monitoring pipeline.</p>
+      <p><strong>Non-critical notifications</strong> — Email alerts, Slack messages, push notifications — if the worst case scenario is someone gets a duplicate notification, the complexity probably isn’t justified.</p>
+      <h2>Key Takeaways</h2>
+      <ol><li><strong>Exactly-once requires both idempotency and atomicity</strong> — neither mechanism alone is sufficient</li><li><strong>Producer sequence numbers</strong> provide the foundation for eliminating duplicates within partitions</li><li><strong>Transaction coordination</strong> extends exactly-once guarantees across multiple partitions and topics</li><li><strong>Consumer design matters</strong> — even exactly-once delivery requires atomic processing and offset management</li><li><strong>Performance trade-offs are real</strong> — exactly-once comes with measurable overhead in throughput and latency</li><li><strong>Infrastructure-level solutions</strong> scale better than pushing complexity to every application</li></ol>
+      <p>Understanding these mechanisms gives you the tools to evaluate messaging systems, design resilient applications, and implement similar guarantees in your own distributed systems architecture.</p>
+    </article>
+
+    <footer class="site-footer">
+      <span>© Alex Razkevich</span>
+      <span><a href="https://github.com/razkevich">GitHub</a></span>
+    </footer>
+  </div>
+</body>
+</html>

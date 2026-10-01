@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Observability and SRE: Building Systems You Can Actually Debug · Alex Razkevich</title>
+  <meta name="description" content="In distributed systems, traditional monitoring often fails when you need it most. A service can appear healthy on infrastructure metrics while users experience " />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <div class="site-brand">
+        <p class="site-title"><a href="/">Alex Razkevich</a></p>
+        <p class="site-tag">Staff Infrastructure Engineer · GCP · reliability · system design</p>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <a href="/">Posts</a>
+        <a href="https://github.com/razkevich">GitHub</a>
+      </nav>
+    </header>
+
+    <p class="back"><a href="/">← All posts</a></p>
+    <h1 class="page-title">Observability and SRE: Building Systems You Can Actually Debug</h1>
+    <p class="meta">August 6, 2025</p>
+    <article class="prose">
+      <h2>Observability and SRE: Building Systems You Can Actually Debug</h2>
+      <p>In distributed systems, traditional monitoring often fails when you need it most. A service can appear healthy on infrastructure metrics while users experience degraded performance due to complex interactions between components. This is why observability has evolved beyond simple monitoring to become essential for operating modern systems.</p>
+      <p>The evolution from traditional monitoring to modern observability represents one of the most significant shifts in how we build and operate distributed systems. Where monitoring used to ask “Is this thing broken?”, observability asks “Why is this thing broken and what can I do about it?”</p>
+      <h2>The Four Pillars: Your Debugging Arsenal</h2>
+      <p>Think of observability as having four essential tools in your debugging toolkit. Each one serves a specific purpose, and together they give you superpowers when things go wrong.</p>
+      <h2>Metrics: The Heartbeat of Your System</h2>
+      <p>Metrics are your system’s vital signs — the continuous stream of numbers that tell you what’s happening right now and what happened over time. They’re cheap to collect, easy to aggregate, and perfect for spotting trends and setting up alerts.</p>
+      <p>The value of metrics lies in their simplicity and aggregability. A single number can indicate system health, performance bottlenecks, or user experience quality. However, effective metrics collection requires focusing on measurements that answer specific business questions rather than collecting data for its own sake.</p>
+      <p><strong>The Four Golden Signals</strong> (thanks, Google SRE team) give you a fantastic starting point:</p>
+      <p><strong>Latency</strong> measures the time it takes to process a request, typically from when a request is received until a response is returned. This includes network time, processing time, and any queuing delays. Response time degradation directly impacts user experience, even when systems function correctly. Average response times can be misleading due to outliers. Percentile measurements (P95, P99) provide better insights into worst-case performance that affects user satisfaction.</p>
+      <p><strong>Traffic</strong> quantifies the demand placed on your system, measured as the rate of requests or operations per unit of time. For HTTP services, this is typically requests per second (RPS). However, business-relevant metrics matter too: for an e-commerce platform, orders per minute during peak periods; for a video streaming service, concurrent streams and bandwidth consumption; for a database, queries per second or transactions per second.</p>
+      <p><strong>Errors</strong> represent the rate of requests that fail, expressed as a fraction of all requests. However, not all errors are equal. A 404 for a missing user profile represents different system health than a 500 from a payment processor failure. Categorize errors by impact: expected errors (user input validation failures), transient errors (temporary network issues), and critical errors (core functionality failures).</p>
+      <p><strong>Saturation</strong> measures how “full” your service is — the utilization of your system’s constrained resources. This includes CPU utilization, memory usage, disk I/O, network bandwidth, or application-specific constraints like database connection pool usage, thread pool saturation, or queue depth. The goal is identifying resource constraints before they become performance bottlenecks.</p>
+      <h2>Golden Signals by Service Scale</h2>
+      <p><strong>Use Case Examples:</strong></p>
+      <ul><li><strong>Small Services</strong>: Startup MVP, internal admin panels, proof-of-concept APIs, development environments, team tools (company directory, expense tracker)</li><li><strong>Medium Services</strong>: Growing SaaS product, departmental systems, regional e-commerce sites, mobile app backends, B2B integration APIs</li><li><strong>Large Services</strong>: Established enterprise products, national e-commerce platforms, major mobile apps, multi-tenant SaaS platforms, payment processors</li><li><strong>Global Scale</strong>: Social media platforms, search engines, CDN providers, cloud infrastructure services, global streaming platforms (Netflix, YouTube)</li></ul>
+      <img alt="" loading="lazy" src="images/1_fTbfKq-B0Wp2SCLX34VRAQ.png" />
+      <p>Datadog has become a leading platform for metrics collection and visualization, especially in cloud-native environments. It provides comprehensive monitoring capabilities with automatic service discovery, custom dashboards, and seamless integration across your infrastructure. Cloud providers also offer managed solutions like AWS CloudWatch, Google Cloud Monitoring, and Azure Monitor.</p>
+      <p>Instrumentation should occur at the business logic level alongside infrastructure monitoring. Tracking user registrations, successful transactions, and feature usage provides immediate context for business impact when technical issues arise.</p>
+      <h2>Logs: The Story Your Code Tells</h2>
+      <p>Logs are the narrative of what your application is doing. While metrics tell you <em>what</em> is happening, logs tell you <em>why</em> it’s happening. They’re the breadcrumbs that lead you from “something is wrong” to “here’s exactly what went wrong.”</p>
+      <p>The primary challenge with logs is making them useful during incidents, not collection volume. Teams often generate large amounts of log data but struggle to find relevant information when needed. Structured logging with consistent formatting and meaningful context addresses this problem.</p>
+      <p>Structured logs, typically in JSON format, are searchable and parseable. Instead of free-form text that only humans can interpret, structured logs create data that both humans and machines can work with efficiently. Include correlation IDs, user IDs, request IDs, and other contextual information that helps you trace through complex workflows.</p>
+      <p>Log levels matter more than you might think. ERROR should mean something is broken and needs immediate attention. WARN indicates something unusual that might need investigation later. INFO captures important application events, and DEBUG provides detailed execution information for troubleshooting.</p>
+      <p>Traditional log management often required complex setups with multiple tools, but modern platforms like Datadog offer integrated observability with efficient log management, real-time search, and correlation with metrics and traces. Cloud providers also offer managed solutions like AWS CloudWatch Logs, Google Cloud Logging, and Azure Monitor Logs.</p>
+      <p>A critical logging pattern involves capturing the entry and exit of important business operations with their inputs and outcomes. When failures occur, this provides complete context about what data was processed and where the failure happened.</p>
+      <h2>Traces: Following the Request’s Journey</h2>
+      <p>This is where things get interesting. In a microservices world, a single user request might touch dozens of services. Traditional logs and metrics can tell you that Service A is slow, but they can’t easily tell you that Service A is slow because Service C is timing out, which is happening because Service F’s database is overloaded.</p>
+      <p>Distributed tracing solves this by following a request’s entire journey through your system. Each service adds spans to a trace, creating a timeline of exactly what happened and how long each step took. It’s like having a GPS tracker for your requests.</p>
+      <p>Distributed tracing enables direct correlation between performance issues and their root causes. When investigating slow requests, you can immediately identify which service or dependency contributed most to the latency without manual correlation work.</p>
+      <p>It can be as primitive as adding correlation IDs to requests that are being logged, to more sophisticated solutions such as Datadog APM which provides automatic instrumentation and trace correlation across services</p>
+      <p>OpenTelemetry has emerged as the standard for distributed tracing, providing vendor-neutral APIs and SDKs. Most tracing solutions support it.</p>
+      <p>The key to successful tracing is choosing what to trace. Don’t try to trace everything — that’s expensive and noisy. Focus on critical user journeys and service boundaries. Trace user authentication, payment processing, and data writes, but maybe skip internal cache lookups unless you’re debugging performance issues.</p>
+      <h2>Alerts: Your Early Warning System</h2>
+      <p>Alerts are where observability meets action. They’re the bridge between “I know something is wrong” and “I’m doing something about it.” But here’s the thing about alerts that nobody talks about enough: bad alerts are worse than no alerts.</p>
+      <p>Alert fatigue occurs when teams receive too many false positive notifications, leading to alert dismissal and missed critical issues. The solution requires improving alert quality and relevance rather than simply reducing alert volume.</p>
+      <p>Alert on symptoms that users experience, not on internal system states that might not matter. A full disk on a database replica might not affect users if you have automatic failover, but a spike in API error rates definitely will.</p>
+      <p>Datadog provides comprehensive alerting capabilities with intelligent features like alert correlation, anomaly detection, and automated alert grouping to reduce noise. It supports multi-condition alerts, escalation policies, and integrations with notification channels like Slack, email, and webhook endpoints.</p>
+      <h2>Site Reliability Engineering: Turning Chaos into Discipline</h2>
+      <p>SRE, Google’s approach to running systems at scale, gives us a framework for thinking about reliability systematically rather than reactively. At its core, SRE is about finding the right balance between reliability and feature velocity through measurement and automation.</p>
+      <h2>The Core Concepts</h2>
+      <p><strong>Service Level Indicators (SLIs)</strong> are quantitative measures of service behavior that matter to users. These are typically expressed as ratios: successful requests / total requests for availability, or requests completed within threshold / total requests for latency. For a web application, key SLIs include request latency (response time) and error rate. For a data pipeline, relevant SLIs might be processing latency, throughput, and data accuracy. The key principle is choosing SLIs that directly reflect user experience rather than internal system metrics.</p>
+      <p><strong>Service Level Objectives (SLOs)</strong> define target values for your SLIs over a specified time period. An SLO must be specific, measurable, achievable, and time-bound. For example: “Our API will respond to 95% of requests within 200ms over any 30-day rolling window” or “99.9% of user requests will receive a successful response (2xx or 3xx status code) over each calendar month.” SLOs should balance ambition (driving reliability improvements) with achievability (avoiding constant failure).</p>
+      <p><strong>Error Budgets</strong> quantify the acceptable amount of unreliability, calculated as (1 — SLO). If your availability SLO is 99.9%, your error budget is 0.1%. This translates to concrete allowances: for a service handling 1 million requests monthly, a 99.9% SLO permits 1,000 failed requests per month. Error budgets provide a finite resource that teams can “spend” on feature velocity while maintaining reliability targets.</p>
+      <p>Error budgets transform reliability discussions from subjective debates to objective data-driven decisions. Deployment timing decisions become based on current error budget consumption rather than intuition or risk aversion.</p>
+      <h2>SRE in Practice</h2>
+      <p>SRE teams typically split their time between operational work (responding to incidents, managing toil) and engineering work (building automation, improving reliability). The goal is to automate away repetitive operational work so you can focus on systematic improvements.</p>
+      <p><strong>Toil</strong> represents work that is manual, repetitive, automatable, and provides no lasting value. SRE teams systematically measure and minimize toil, creating incentives for building better automation and self-healing systems.</p>
+      <p><strong>Error budget policies</strong> define organizational responses when error budget consumption exceeds acceptable rates. These policies typically include escalating actions: at 50% budget consumption, implement additional deployment reviews; at 75%, require extended testing and approval processes; at 90%, halt feature development to focus on reliability improvements; at 100%, implement deployment freeze until budget recovers. Policies should be established proactively during calm periods rather than reactively during incidents, ensuring objective decision-making under pressure.</p>
+      <p><strong>Postmortems</strong> in the SRE world are blameless learning exercises focused on understanding what went wrong and how to prevent similar issues. The goal isn’t to find who caused the problem — it’s to find what systemic issues enabled the problem and fix those.</p>
+      <h2>Conclusion</h2>
+      <p>Observability and SRE practices transform how teams build and operate distributed systems. The four pillars — metrics, logs, traces, and alerts — provide comprehensive visibility into system behavior, while SRE frameworks like SLIs, SLOs, and error budgets enable data-driven reliability decisions.</p>
+      <p>Success doesn’t require implementing everything at once. Start with basic metrics and alerts for critical user journeys, establish SLOs for key services, and gradually expand coverage. The investment in observability infrastructure pays dividends through faster incident resolution, improved system reliability, and better engineering productivity.</p>
+      <p>As systems grow in complexity, these practices become essential for maintaining operational excellence while delivering features at scale.</p>
+    </article>
+
+    <footer class="site-footer">
+      <span>© Alex Razkevich</span>
+      <span><a href="https://github.com/razkevich">GitHub</a></span>
+    </footer>
+  </div>
+</body>
+</html>

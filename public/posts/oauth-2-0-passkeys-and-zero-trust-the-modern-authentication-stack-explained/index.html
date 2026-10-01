@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OAuth 2.0, Passkeys, and Zero Trust: The Modern Authentication Stack Explained · Alex Razkevich</title>
+  <meta name="description" content="Let’s be honest — every time you log into an app, there’s a complex dance happening behind the scenes that most people never think about. But if you’re building" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <div class="site-brand">
+        <p class="site-title"><a href="/">Alex Razkevich</a></p>
+        <p class="site-tag">Staff Infrastructure Engineer · GCP · reliability · system design</p>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <a href="/">Posts</a>
+        <a href="https://github.com/razkevich">GitHub</a>
+      </nav>
+    </header>
+
+    <p class="back"><a href="/">← All posts</a></p>
+    <h1 class="page-title">OAuth 2.0, Passkeys, and Zero Trust: The Modern Authentication Stack Explained</h1>
+    <p class="meta">July 27, 2025</p>
+    <article class="prose">
+      <h2>Authentication and Authorization: Why Security Is Never Simple</h2>
+      <p>Let’s be honest — every time you log into an app, there’s a complex dance happening behind the scenes that most people never think about. But if you’re building systems that handle user data (and let’s face it, what system doesn’t these days?), understanding authentication and authorization isn’t optional.</p>
+      <p>Here’s the thing: these two concepts sound similar but solve completely different problems.</p>
+      <p><strong>Authentication</strong> answers “who are you?” It’s like showing your ID at a bar — you’re proving you’re actually the person you claim to be.</p>
+      <p><strong>Authorization</strong> answers “what can you do?” Even after the bouncer confirms your ID, that doesn’t mean you can walk into the VIP section. Your ticket (or lack thereof) determines what you’re allowed to access.</p>
+      <p>Why does this matter? Well, mess up authentication and anyone can pretend to be anyone else. Mess up authorization and suddenly your users are seeing each other’s bank statements. Neither scenario ends well for your company’s reputation or your sleep schedule.</p>
+      <h2>How We Prove Identity: A Brief History of Not Getting Hacked</h2>
+      <h2>From Simple to Complex (Because Hackers Got Smarter)</h2>
+      <p>Back in the day, authentication was straightforward — you had a username and password, and that was it. This worked fine when computers were room-sized monsters that required physical access. But then the internet happened, and suddenly everyone wanted to break into everyone else’s systems.</p>
+      <p><strong>Basic Authentication</strong> was the internet’s first attempt at “security.” Every single request included your username and password in plain text. Yes, you read that right — plain text. It’s like shouting your credit card number across a crowded restaurant every time you want to pay.</p>
+      <p><strong>Digest authentication</strong> tried to fix this obvious problem by hashing passwords before sending them. Better than nothing, but still not great — hackers could still use rainbow tables to crack those hashes, and the rest of your data was still flying around unprotected.</p>
+      <p><strong>Token-based authentication</strong> was the game changer. Instead of sending credentials with every request, you authenticate once and get a token — think of it as a temporary access pass. Here’s where <strong>token rotation</strong> becomes crucial: most systems automatically refresh tokens before they expire (typically every 15–60 minutes), giving you a new token while invalidating the old one. Companies like Salesforce take this seriously — their access tokens expire quickly, but they provide refresh tokens that can generate new access tokens without requiring users to log in again.</p>
+      <p><strong>Multi-factor authentication (MFA)</strong> took things further by requiring multiple proofs: something you know (password), something you have (your phone), and sometimes something you are (your fingerprint). Suddenly, stealing just your password wasn’t enough anymore.</p>
+      <h2>The Protocols Everyone Actually Uses</h2>
+      <p>Now we get to the interesting part — the protocols that power most of the apps you use daily. If you’ve ever clicked “Sign in with Google” or logged into Salesforce, you’ve used these technologies.</p>
+      <p><strong>SAML (Security Assertion Markup Language)</strong> is the protocol your IT department loves and developers hate. It’s XML-heavy and complex, but it works well for enterprise SSO. When you log into your corporate network and magically have access to Jira, Confluence, and fifty other tools without typing another password, that’s SAML doing its thing.</p>
+      <p><strong>OAuth 2.0</strong> is what makes “Sign in with Google” possible. Technically it’s an authorization protocol, but most people use it for authentication too (which is technically wrong, but whatever works, right?). Salesforce, for example, implements OAuth 2.0 with multiple grant types — their web server flow handles the typical redirect dance, while their JWT bearer flow lets trusted applications authenticate directly without user interaction.</p>
+      <p><strong>OpenID Connect (OIDC)</strong> fixes OAuth 2.0’s authentication problem by adding an identity layer on top. When you use Google or Microsoft to sign into other apps, you’re using OIDC. It gives you both an access token (for API calls) and an identity token (to prove who you are). Smart companies like GitHub and Spotify use this for their <strong>social login</strong> features because why reinvent the wheel when Google has already solved identity management?</p>
+      <p>In the enterprise world, you’ll still find <strong>LDAP</strong> directories (think of them as phone books for users), <strong>Active Directory</strong> (Microsoft’s everything-identity solution), and <strong>Kerberos</strong> (the protocol that lets you access network resources without typing passwords constantly). Salesforce integrates with all of these through SAML, so your corporate login can seamlessly work with their platform.</p>
+      <p>These protocols excel because they separate authentication and authorization concerns while providing secure, scalable solutions across platforms. Understanding when to use each protocol is crucial for building robust systems:</p>
+      <ul><li><strong>SAML</strong> works best for enterprise SSO scenarios with established infrastructure</li><li><strong>OAuth 2.0 + OIDC</strong> is ideal for modern web/mobile applications and API-driven architectures</li><li><strong>Enterprise systems</strong> (LDAP, AD, Kerberos) are essential for organizations with complex user hierarchies and legacy system integration needs</li></ul>
+      <h2>Authorization: Just Because You’re In Doesn’t Mean You Can Touch Everything</h2>
+      <h2>From Simple Lists to Smart Policies</h2>
+      <p>Once you’ve proven who you are, the next question is: what are you allowed to do? This is where things get interesting (and complicated).</p>
+      <p>Back in the day, systems used simple <strong>Access Control Lists (ACLs)</strong> — basically spreadsheets that said “John can read this file, Mary can edit that folder.” This worked fine until you had thousands of users and millions of files. Then it became a nightmare.</p>
+      <p><strong>Role-Based Access Control (RBAC)</strong> was the obvious next step. Instead of managing permissions for each person individually, you create roles like “Editor,” “Viewer,” or “Admin,” then assign people to roles. AWS IAM works this way, as does Kubernetes and pretty much every enterprise app worth using. It’s like having job descriptions that automatically determine what you can access.</p>
+      <p><strong>Attribute-Based Access Control (ABAC)</strong> is the current state-of-the-art. Instead of just checking your role, it looks at everything — who you are, what you’re trying to access, when you’re accessing it, where you’re accessing it from. AWS IAM conditions use this approach (“allow access only from the office IP during business hours”), and Google Cloud IAM does something similar. Open Policy Agent (OPA) is the tool that makes this kind of complex policy management actually manageable.</p>
+      <h2>How Modern Apps Handle “What Can You Do?”</h2>
+      <p><strong>SAML</strong> doesn’t just handle authentication — it also carries authorization info. When Salesforce’s SAML response says you’re a “Sales Manager,” that’s not just identity information — it’s telling the receiving application what permissions you should have.</p>
+      <p><strong>OAuth 2.0</strong> is where things get really interesting for APIs. It’s all about <strong>scopes</strong> — specific permissions like “read your email” or “post to your timeline.” When you connect Spotify to Discord, OAuth 2.0 handles the “show what you’re listening to” permission without Discord ever seeing your Spotify password.</p>
+      <p>OAuth 2.0 has several “grant types” (fancy word for “ways to get permission”):</p>
+      <ul><li><strong>Authorization Code Grant</strong>: The standard web flow (redirect to login, come back with a code, exchange for token)</li><li><strong>Implicit Grant</strong>: Mostly deprecated because it wasn’t secure enough</li><li><strong>Client Credentials Grant</strong>: For when apps talk to each other without humans involved</li><li><strong>Resource Owner Password Grant</strong>: Generally a bad idea unless you really trust the app</li></ul>
+      <p><strong>PKCE (Proof Key for Code Exchange)</strong> fixes a security hole in OAuth 2.0 for mobile apps and single-page applications. It’s basically OAuth 2.0 with extra proof that you’re the same app that started the authentication flow.</p>
+      <h2>Making This Work in the Real World</h2>
+      <p>Okay, enough theory. Let’s talk about what actually happens when you’re building systems that need to handle authentication and authorization without falling over or getting hacked.</p>
+      <h2>Session Management Strategies</h2>
+      <p>The stateless nature of HTTP requires thoughtful approaches to maintaining user context across requests:</p>
+      <h2>Token-Based Authentication</h2>
+      <p>Token-based authentication has become the preferred approach for modern web applications, offering several advantages over traditional session-based methods:</p>
+      <p><strong>JSON Web Tokens (JWTs)</strong> are self-contained tokens that carry user information and claims. They consist of three parts: a header specifying the algorithm, a payload containing claims, and a signature for verification. JWTs can be:</p>
+      <ul><li><strong>Self-signed tokens</strong>: The application verifies the token using a shared secret or public key, eliminating the need for database lookups on every request</li><li><strong>Opaque tokens</strong>: Random strings that require server-side validation, offering better security through token revocation capabilities</li></ul>
+      <p><strong>Server validation approaches</strong> include:</p>
+      <ul><li><strong>Stateless verification</strong>: Using cryptographic signatures to verify token integrity without server-side storage</li><li><strong>Token introspection</strong>: Querying an authorization server to validate tokens and retrieve associated metadata</li><li><strong>Hybrid approaches</strong>: Combining local verification with periodic server validation for optimal performance and security</li></ul>
+      <h2>Other Ways to Prove You’re You</h2>
+      <p><strong>Session-based authentication</strong> is the old-school approach that still powers many web apps. Here’s how it works: after you log in, the server creates a session ID and sends it back in a cookie. Your browser includes this cookie with every request. The server uses headers like <code>Set-Cookie: sessionid=abc123; Max-Age=3600; HttpOnly; Secure</code> to control session lifetime (TTL). Traditional banking sites and many internal enterprise apps still use this because it's simple and well-understood.</p>
+      <p><strong>API keys</strong> are like permanent passwords for machines talking to machines. Think Stripe’s API keys or AWS access keys. Unlike tokens, API keys don’t expire automatically (though they should be rotated regularly). They’re perfect for server-to-server communication where you can’t do the OAuth dance. The key difference from tokens? API keys identify the application, while tokens identify the user.</p>
+      <p><strong>Certificate-based authentication</strong> is the heavy-duty option. Banks and government systems use client certificates to verify both ends of a connection. It’s bulletproof but complex to manage — you need a whole PKI infrastructure just to issue and revoke certificates.</p>
+      <h2>The Password-Free Future (It’s Already Here)</h2>
+      <p>Passwords are dying, and honestly, it’s about time. Here’s what’s replacing them:</p>
+      <p><strong>FIDO2/WebAuthn</strong> sounds scary but it’s actually brilliant. Instead of remembering passwords, you use your fingerprint, face, or a hardware key. Chrome supports this natively, and you’ve probably used it without realizing — when you unlock your phone with your face to pay for something, that’s WebAuthn in action.</p>
+      <p><strong>Passkeys</strong> are Apple, Google, and Microsoft’s attempt to kill passwords once and for all. They’re basically WebAuthn made user-friendly. When you set up a passkey on your iPhone for GitHub, it creates a unique cryptographic key pair. The private key never leaves your device, but you can sync it across your Apple devices through iCloud. Google does the same with Android devices, and Microsoft with Windows Hello.</p>
+      <h2>Cryptographic Foundations</h2>
+      <p>Behind every secure authentication system are robust cryptographic algorithms that protect user credentials:</p>
+      <p><strong>bcrypt</strong> has been a long-standing choice for password hashing, using adaptive hashing with configurable work factors to resist brute-force attacks as computing power increases.</p>
+      <p><strong>Argon2</strong> is the winner of the Password Hashing Competition and represents the current state-of-the-art in password hashing. It offers three variants (Argon2d, Argon2i, and Argon2id) optimized for different attack scenarios and provides excellent resistance against both time-memory trade-off attacks and side-channel attacks.</p>
+      <p><strong>PBKDF2 (Password-Based Key Derivation Function 2)</strong> remains widely used, particularly in legacy systems and standards compliance scenarios, though it’s generally considered less secure than modern alternatives like Argon2.</p>
+      <h2>Implementation Solutions: Open Source and Managed Services</h2>
+      <p>Rather than building authentication from scratch — a complex and error-prone endeavor — organizations should leverage proven solutions:</p>
+      <p><strong>Open Source Solutions:</strong></p>
+      <ul><li><strong>Keycloak</strong> offers comprehensive identity and access management with support for SAML, OAuth 2.0, and OpenID Connect</li><li><strong>Auth0 Community Edition</strong> provides identity platform capabilities for smaller deployments</li><li><strong>FusionAuth</strong> delivers complete authentication and user management with modern API-first architecture</li><li><strong>Supabase Auth</strong> provides simple, developer-friendly authentication with built-in social providers</li><li><strong>Firebase Authentication</strong> (now part of Google Cloud) offers easy integration with web and mobile applications</li></ul>
+      <p><strong>Managed Identity Providers:</strong></p>
+      <ul><li><strong>Auth0</strong> leads the market with extensive protocol support and enterprise features</li><li><strong>AWS Cognito</strong> integrates seamlessly with AWS services and provides scalable user pools</li><li><strong>Azure Active Directory B2C</strong> offers consumer identity management alongside enterprise AD features</li><li><strong>Google Cloud Identity Platform</strong> provides Firebase Authentication capabilities at enterprise scale</li><li><strong>Okta</strong> delivers comprehensive identity solutions for both workforce and customer identity use cases</li></ul>
+      <p>These solutions handle the complexity of implementing secure authentication protocols, maintaining compliance standards, and providing scalable infrastructure, allowing development teams to focus on their core business logic.</p>
+      <h2>The Bottom Line</h2>
+      <p>Authentication and authorization are the foundation that many other things around security builds on. Mess them up, and it doesn’t matter how good the rest of your system is.</p>
+      <p><strong>The practical advice:</strong></p>
+      <ul><li>Don’t reinvent the wheel. Use Auth0, AWS Cognito, or similar managed services unless you have a very specific reason not to</li><li>If you must build it yourself, start with proven libraries like Keycloak or FusionAuth</li><li>Choose OAuth 2.0/OIDC for modern apps, SAML if you’re stuck in enterprise land</li><li>Consider passwordless from day one — your users will thank you</li></ul>
+      <p>Security isn’t something you add later when you have time. It’s like building a house — you can’t retrofit a foundation. The good news? You don’t have to figure this out alone. The protocols and tools discussed here have been battle-tested by companies much larger than yours, dealing with threats much scarier than anything you’re likely to face.</p>
+      <p>Pick the right tools, implement them correctly, and focus on building the features that actually differentiate your product.</p>
+    </article>
+
+    <footer class="site-footer">
+      <span>© Alex Razkevich</span>
+      <span><a href="https://github.com/razkevich">GitHub</a></span>
+    </footer>
+  </div>
+</body>
+</html>
