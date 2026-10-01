@@ -1,18 +1,63 @@
 {
-  "generated": "2026-10-01T09:59:29.425327Z",
-  "count": 27,
+  "generated": "2026-10-01T19:16:07.902Z",
+  "count": 32,
   "posts": [
+    {
+      "title": "Why LIKE Doesn't Scale: Inverted Indexes, Scatter-Gather, and How SaaS Should Index Search",
+      "slug": "why-like-doesnt-scale-inverted-indexes-scatter-gather-and-how-saas-should-index-search",
+      "date": "2026-09-25",
+      "date_human": "September 25, 2026",
+      "excerpt": "Product search needs a different structure than OLTP. Inverted indexes, BM25, scatter-gather, async indexing via outbox/CDC, tenant isolation of indexes, and hybrid BM25 + vector retrieval.",
+      "url": "/posts/why-like-doesnt-scale-inverted-indexes-scatter-gather-and-how-saas-should-index-search/",
+      "path": "posts/why-like-doesnt-scale-inverted-indexes-scatter-gather-and-how-saas-should-index-search/index.html"
+    },
+    {
+      "title": "Multi-Tenancy Is the Real SaaS Architecture: Isolation Models, Noisy Neighbors, and Database Choices That Stick",
+      "slug": "multi-tenancy-is-the-real-saas-architecture-isolation-models-noisy-neighbors-and-database-choices-that-stick",
+      "date": "2026-06-12",
+      "date_human": "June 12, 2026",
+      "excerpt": "Almost every SaaS decision is a tenancy decision in disguise. Isolation models, noisy-neighbor controls, DB-per-tenant vs shared schema + RLS, tiering, cells, and GDPR-complete offboarding.",
+      "url": "/posts/multi-tenancy-is-the-real-saas-architecture-isolation-models-noisy-neighbors-and-database-choices-that-stick/",
+      "path": "posts/multi-tenancy-is-the-real-saas-architecture-isolation-models-noisy-neighbors-and-database-choices-that-stick/index.html"
+    },
+    {
+      "title": "The Dual-Write Problem: Why Your Events Lie — and How the Outbox Pattern Fixes It",
+      "slug": "the-dual-write-problem-why-your-events-lie-and-how-the-outbox-pattern-fixes-it",
+      "date": "2026-03-05",
+      "date_human": "March 5, 2026",
+      "excerpt": "You cannot atomically write a DB row and publish to a broker without distributed transactions. Outbox + polling or CDC relay, inbox idempotency, and when not to bother — the app-level complement to Kafka EOS.",
+      "url": "/posts/the-dual-write-problem-why-your-events-lie-and-how-the-outbox-pattern-fixes-it/",
+      "path": "posts/the-dual-write-problem-why-your-events-lie-and-how-the-outbox-pattern-fixes-it/index.html"
+    },
+    {
+      "title": "CAP Is Incomplete: PACELC and the Consistency Choices You Make on Every Query",
+      "slug": "cap-is-incomplete-pacelc-and-the-consistency-choices-you-make-on-every-query",
+      "date": "2025-12-04",
+      "date_human": "December 4, 2025",
+      "excerpt": "CAP is misread as pick-two-forever; the trade-off fires during partitions. PACELC adds the everyday latency-vs-consistency axis. Pick consistency per operation — especially in multi-tenant SaaS.",
+      "url": "/posts/cap-is-incomplete-pacelc-and-the-consistency-choices-you-make-on-every-query/",
+      "path": "posts/cap-is-incomplete-pacelc-and-the-consistency-choices-you-make-on-every-query/index.html"
+    },
+    {
+      "title": "Caching That Actually Helps: Hit Rates, Invalidation, and the Patterns That Don't Blow Up Production",
+      "slug": "caching-that-actually-helps-hit-rates-invalidation-and-the-patterns-that-dont-blow-up-production",
+      "date": "2025-09-18",
+      "date_human": "September 18, 2025",
+      "excerpt": "Caching is not a speed button — it is an amortized latency bet that loses when miss rate or stampede costs dominate. Decision math, layer stack, read/write patterns, invalidation, and stampede mitigations for production SaaS.",
+      "url": "/posts/caching-that-actually-helps-hit-rates-invalidation-and-the-patterns-that-dont-blow-up-production/",
+      "path": "posts/caching-that-actually-helps-hit-rates-invalidation-and-the-patterns-that-dont-blow-up-production/index.html"
+    },
     {
       "title": "Distributed Consensus Explained: From Paxos Theory to Real-World Systems",
       "slug": "distributed-consensus-explained-from-paxos-theory-to-real-world-systems",
       "date": "2025-08-23",
       "date_human": "August 23, 2025",
-      "excerpt": "Imagine you\u2019re building a banking system where multiple servers need to agree on account balances. Server A thinks Alice has $100, but Server B thinks she has $50 because it missed a recent transaction.",
+      "excerpt": "Imagine you’re building a banking system where multiple servers need to agree on account balances. Server A thinks Alice has $100, but Server B thinks she has $50 because it missed a recent transaction.",
       "url": "/posts/distributed-consensus-explained-from-paxos-theory-to-real-world-systems/",
       "path": "posts/distributed-consensus-explained-from-paxos-theory-to-real-world-systems/index.html"
     },
     {
-      "title": "Cloud Cost Optimization: A Senior Engineer\u2019s Guide",
+      "title": "Cloud Cost Optimization: A Senior Engineer’s Guide",
       "slug": "cloud-cost-optimization-a-senior-engineers-guide",
       "date": "2025-08-23",
       "date_human": "August 23, 2025",
@@ -25,7 +70,7 @@
       "slug": "building-resilient-cloud-applications-how-reactive-architecture-solves-modern-scaling-challenges",
       "date": "2025-08-12",
       "date_human": "August 12, 2025",
-      "excerpt": "In today\u2019s cloud-native world, traditional request-response architectures are hitting their limits. Applications struggling under load, cascading failures bringing down entire systems, and the complexity of coordinating asynchronous operations across microservices highlight\u2026",
+      "excerpt": "In today’s cloud-native world, traditional request-response architectures are hitting their limits. Applications struggling under load, cascading failures bringing down entire systems, and the complexity of coordinating asynchronous operations across microservices highlight…",
       "url": "/posts/building-resilient-cloud-applications-how-reactive-architecture-solves-modern-scaling-challenges/",
       "path": "posts/building-resilient-cloud-applications-how-reactive-architecture-solves-modern-scaling-challenges/index.html"
     },
@@ -34,7 +79,7 @@
       "slug": "service-mesh-taming-the-complexity-of-service-to-service-communication",
       "date": "2025-08-08",
       "date_human": "August 8, 2025",
-      "excerpt": "As microservices architectures have evolved, service-to-service communication has become increasingly complex. Different teams often implement their own approaches to handling retries, timeouts, and circuit breakers\u200a\u2014\u200asome using language-specific libraries, others building\u2026",
+      "excerpt": "As microservices architectures have evolved, service-to-service communication has become increasingly complex. Different teams often implement their own approaches to handling retries, timeouts, and circuit breakers — some using language-specific libraries, others building…",
       "url": "/posts/service-mesh-taming-the-complexity-of-service-to-service-communication/",
       "path": "posts/service-mesh-taming-the-complexity-of-service-to-service-communication/index.html"
     },
@@ -43,7 +88,7 @@
       "slug": "modular-monoliths-the-architecture-that-dares-to-stay-together",
       "date": "2025-08-08",
       "date_human": "August 8, 2025",
-      "excerpt": "Modular monoliths offer the modularity and clear boundaries of microservices with the simplicity of monolithic deployment. Companies like Shopify, GitHub, and Basecamp have built massive systems this way, achieving team autonomy and clear boundaries without distributed\u2026",
+      "excerpt": "Modular monoliths offer the modularity and clear boundaries of microservices with the simplicity of monolithic deployment. Companies like Shopify, GitHub, and Basecamp have built massive systems this way, achieving team autonomy and clear boundaries without distributed…",
       "url": "/posts/modular-monoliths-the-architecture-that-dares-to-stay-together/",
       "path": "posts/modular-monoliths-the-architecture-that-dares-to-stay-together/index.html"
     },
@@ -52,7 +97,7 @@
       "slug": "from-monoliths-to-microservices-and-back-a-decade-of-hard-won-lessons",
       "date": "2025-08-07",
       "date_human": "August 7, 2025",
-      "excerpt": "When Amazon Prime Video announced they\u2019d moved their video monitoring and analytics services back to a monolithic architecture to reduce latency and operational complexity, it sent shockwaves through the tech industry. This was particularly striking coming from Amazon\u200a\u2014\u200aone\u2026",
+      "excerpt": "When Amazon Prime Video announced they’d moved their video monitoring and analytics services back to a monolithic architecture to reduce latency and operational complexity, it sent shockwaves through the tech industry. This was particularly striking coming from Amazon — one…",
       "url": "/posts/from-monoliths-to-microservices-and-back-a-decade-of-hard-won-lessons/",
       "path": "posts/from-monoliths-to-microservices-and-back-a-decade-of-hard-won-lessons/index.html"
     },
@@ -70,7 +115,7 @@
       "slug": "circuit-breakers-preventing-cascade-failures-in-distributed-systems",
       "date": "2025-08-05",
       "date_human": "August 5, 2025",
-      "excerpt": "The circuit breaker pattern protects distributed systems from the cascade effects of downstream failures. Named after electrical circuit breakers that prevent electrical fires by cutting power during overloads, software circuit breakers monitor interactions with external\u2026",
+      "excerpt": "The circuit breaker pattern protects distributed systems from the cascade effects of downstream failures. Named after electrical circuit breakers that prevent electrical fires by cutting power during overloads, software circuit breakers monitor interactions with external…",
       "url": "/posts/circuit-breakers-preventing-cascade-failures-in-distributed-systems/",
       "path": "posts/circuit-breakers-preventing-cascade-failures-in-distributed-systems/index.html"
     },
@@ -79,7 +124,7 @@
       "slug": "bulkheads-isolating-failure-domains",
       "date": "2025-08-05",
       "date_human": "August 5, 2025",
-      "excerpt": "The bulkhead principle isolates different parts of a system to prevent failures in one area from affecting others. Named after the watertight compartments in ships that prevent a single breach from sinking the entire vessel, software bulkheads create isolated failure domains\u2026",
+      "excerpt": "The bulkhead principle isolates different parts of a system to prevent failures in one area from affecting others. Named after the watertight compartments in ships that prevent a single breach from sinking the entire vessel, software bulkheads create isolated failure domains…",
       "url": "/posts/bulkheads-isolating-failure-domains/",
       "path": "posts/bulkheads-isolating-failure-domains/index.html"
     },
@@ -97,7 +142,7 @@
       "slug": "every-architectural-decision-is-a-trade-off",
       "date": "2025-08-03",
       "date_human": "August 3, 2025",
-      "excerpt": "Every architectural decision is a trade-off. When you choose one path, you\u2019re implicitly saying no to others.",
+      "excerpt": "Every architectural decision is a trade-off. When you choose one path, you’re implicitly saying no to others.",
       "url": "/posts/every-architectural-decision-is-a-trade-off/",
       "path": "posts/every-architectural-decision-is-a-trade-off/index.html"
     },
@@ -133,16 +178,16 @@
       "slug": "kafka-exactly-once-semantics-how-it-really-works",
       "date": "2025-07-30",
       "date_human": "July 30, 2025",
-      "excerpt": "Exactly-once message processing has long been the \u201choly grail\u201d of distributed systems. For decades, developers were forced to choose between losing messages (at-most-once) or handling duplicates (at-least-once).",
+      "excerpt": "Exactly-once message processing has long been the “holy grail” of distributed systems. For decades, developers were forced to choose between losing messages (at-most-once) or handling duplicates (at-least-once).",
       "url": "/posts/kafka-exactly-once-semantics-how-it-really-works/",
       "path": "posts/kafka-exactly-once-semantics-how-it-really-works/index.html"
     },
     {
-      "title": "Load Balancers, API Gateways, Proxies & CDNs Explained: The Network Components That Scale Your App\u2026",
+      "title": "Load Balancers, API Gateways, Proxies & CDNs Explained: The Network Components That Scale Your App…",
       "slug": "load-balancers-api-gateways-proxies-cdns-explained-the-network-components-that-scale-your-app",
       "date": "2025-07-28",
       "date_human": "July 28, 2025",
-      "excerpt": "Modern web applications rely on critical network components that enable scaling, resilience, and global performance. This article covers the essential building blocks every system architect should understand: load balancers, API gateways, proxies, CDNs, and related\u2026",
+      "excerpt": "Modern web applications rely on critical network components that enable scaling, resilience, and global performance. This article covers the essential building blocks every system architect should understand: load balancers, API gateways, proxies, CDNs, and related…",
       "url": "/posts/load-balancers-api-gateways-proxies-cdns-explained-the-network-components-that-scale-your-app/",
       "path": "posts/load-balancers-api-gateways-proxies-cdns-explained-the-network-components-that-scale-your-app/index.html"
     },
@@ -151,16 +196,16 @@
       "slug": "kubernetes-networking-a-complete-guide-from-basics-to-advanced",
       "date": "2025-07-28",
       "date_human": "July 28, 2025",
-      "excerpt": "Networking is truly the backbone of Kubernetes. And understanding Kubernetes networking isn\u2019t just about memorizing concepts\u200a\u2014\u200ait\u2019s about building the foundational knowledge that helps you reason about complex distributed systems, troubleshoot issues quickly, and design\u2026",
+      "excerpt": "Networking is truly the backbone of Kubernetes. And understanding Kubernetes networking isn’t just about memorizing concepts — it’s about building the foundational knowledge that helps you reason about complex distributed systems, troubleshoot issues quickly, and design…",
       "url": "/posts/kubernetes-networking-a-complete-guide-from-basics-to-advanced/",
       "path": "posts/kubernetes-networking-a-complete-guide-from-basics-to-advanced/index.html"
     },
     {
-      "title": "Stop Getting Lost in AWS Networking: A Developer\u2019s Guide to VPCs, Security Groups, and Route Tables",
+      "title": "Stop Getting Lost in AWS Networking: A Developer’s Guide to VPCs, Security Groups, and Route Tables",
       "slug": "stop-getting-lost-in-aws-networking-a-developers-guide-to-vpcs-security-groups-and-route-tables",
       "date": "2025-07-28",
       "date_human": "July 28, 2025",
-      "excerpt": "Networking forms the foundation of cloud infrastructure, with virtually every service depending on it for communication and connectivity. While many engineers assume networking is solely the domain of system administrators or DevOps teams, this perspective can severely limit\u2026",
+      "excerpt": "Networking forms the foundation of cloud infrastructure, with virtually every service depending on it for communication and connectivity. While many engineers assume networking is solely the domain of system administrators or DevOps teams, this perspective can severely limit…",
       "url": "/posts/stop-getting-lost-in-aws-networking-a-developers-guide-to-vpcs-security-groups-and-route-tables/",
       "path": "posts/stop-getting-lost-in-aws-networking-a-developers-guide-to-vpcs-security-groups-and-route-tables/index.html"
     },
@@ -169,16 +214,16 @@
       "slug": "oauth-2-0-passkeys-and-zero-trust-the-modern-authentication-stack-explained",
       "date": "2025-07-27",
       "date_human": "July 27, 2025",
-      "excerpt": "Let\u2019s be honest\u200a\u2014\u200aevery time you log into an app, there\u2019s a complex dance happening behind the scenes that most people never think about. But if you\u2019re building systems that handle user data (and let\u2019s face it, what system doesn\u2019t these days?), understanding authentication\u2026",
+      "excerpt": "Let’s be honest — every time you log into an app, there’s a complex dance happening behind the scenes that most people never think about. But if you’re building systems that handle user data (and let’s face it, what system doesn’t these days?), understanding authentication…",
       "url": "/posts/oauth-2-0-passkeys-and-zero-trust-the-modern-authentication-stack-explained/",
       "path": "posts/oauth-2-0-passkeys-and-zero-trust-the-modern-authentication-stack-explained/index.html"
     },
     {
-      "title": "Sharding vs Replication: The Mental Model You\u2019ll Actually Understand",
+      "title": "Sharding vs Replication: The Mental Model You’ll Actually Understand",
       "slug": "sharding-vs-replication-the-mental-model-youll-actually-understand",
       "date": "2025-07-25",
       "date_human": "July 25, 2025",
-      "excerpt": "After consuming numerous books, videos, courses and solving real production problems all related to distributed systems, I think I\u2019ve come to a conclusion how to better present the fundamental ideas of distributed computing, so that it clicks in one\u2019s mind and starts to make\u2026",
+      "excerpt": "After consuming numerous books, videos, courses and solving real production problems all related to distributed systems, I think I’ve come to a conclusion how to better present the fundamental ideas of distributed computing, so that it clicks in one’s mind and starts to make…",
       "url": "/posts/sharding-vs-replication-the-mental-model-youll-actually-understand/",
       "path": "posts/sharding-vs-replication-the-mental-model-youll-actually-understand/index.html"
     },
@@ -187,7 +232,7 @@
       "slug": "from-message-queues-to-global-streams-the-rise-of-event-driven-architectures",
       "date": "2025-07-23",
       "date_human": "July 23, 2025",
-      "excerpt": "The journey from simple message queues to sophisticated streaming platforms represents one of the most significant architectural shifts in distributed systems. This evolution started back in the 1980s and 1990s when the first commercial message queue systems entered the\u2026",
+      "excerpt": "The journey from simple message queues to sophisticated streaming platforms represents one of the most significant architectural shifts in distributed systems. This evolution started back in the 1980s and 1990s when the first commercial message queue systems entered the…",
       "url": "/posts/from-message-queues-to-global-streams-the-rise-of-event-driven-architectures/",
       "path": "posts/from-message-queues-to-global-streams-the-rise-of-event-driven-architectures/index.html"
     },
@@ -214,7 +259,7 @@
       "slug": "transaction-isolation-levels-build-understanding-from-the-ground-up",
       "date": "2025-07-19",
       "date_human": "July 19, 2025",
-      "excerpt": "How many times have you tried to get your head around and memorize transaction isolation levels? It\u2019s a topic that would pop up in almost every single book on DBs or architecture.",
+      "excerpt": "How many times have you tried to get your head around and memorize transaction isolation levels? It’s a topic that would pop up in almost every single book on DBs or architecture.",
       "url": "/posts/transaction-isolation-levels-build-understanding-from-the-ground-up/",
       "path": "posts/transaction-isolation-levels-build-understanding-from-the-ground-up/index.html"
     },
@@ -232,7 +277,7 @@
       "slug": "understanding-the-domain-of-ddd-a-strategic-and-tactical-design-mental-map",
       "date": "2025-07-16",
       "date_human": "July 16, 2025",
-      "excerpt": "Let\u2019s get our head around the Domain of DDD . I\u2019ve always found it to be a valuable concept that offers a systematic approach to analyzing business problems and modeling solutions in software.",
+      "excerpt": "Let’s get our head around the Domain of DDD . I’ve always found it to be a valuable concept that offers a systematic approach to analyzing business problems and modeling solutions in software.",
       "url": "/posts/understanding-the-domain-of-ddd-a-strategic-and-tactical-design-mental-map/",
       "path": "posts/understanding-the-domain-of-ddd-a-strategic-and-tactical-design-mental-map/index.html"
     },
@@ -241,7 +286,7 @@
       "slug": "scalability-in-databases-exploring-different-approaches-across-relational-nosql-and-olap-systems",
       "date": "2025-07-16",
       "date_human": "July 16, 2025",
-      "excerpt": "As I\u2019ve navigated through various engineering roles and architectural decisions over the years, I\u2019ve come to realize that understanding database scalability isn\u2019t just about memorizing features or benchmarks\u200a\u2014\u200ait\u2019s about building a mental map of how different systems think\u2026",
+      "excerpt": "As I’ve navigated through various engineering roles and architectural decisions over the years, I’ve come to realize that understanding database scalability isn’t just about memorizing features or benchmarks — it’s about building a mental map of how different systems think…",
       "url": "/posts/scalability-in-databases-exploring-different-approaches-across-relational-nosql-and-olap-systems/",
       "path": "posts/scalability-in-databases-exploring-different-approaches-across-relational-nosql-and-olap-systems/index.html"
     }
