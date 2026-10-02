@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CAP Is Incomplete: PACELC and the Consistency Choices You Make on Every Query · Alex Razkevich</title>
-  <meta name="description" content="CAP is misread as pick-two-forever. The trade-off fires during partitions; everyday you choose latency vs consistency. PACELC, per-operation models, and a SaaS heatmap." />
+  <meta name="description" content="CAP is misread as pick-two-forever; the trade-off fires during partitions. PACELC adds the everyday latency-vs-consistency axis. Pick consistency per operation." />
   <meta name="color-scheme" content="light dark" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
@@ -26,100 +26,111 @@
     <h1 class="page-title">CAP Is Incomplete: PACELC and the Consistency Choices You Make on Every Query</h1>
     <p class="meta">December 4, 2025</p>
     <article class="prose">
-      <p>CAP is misread as “pick two of three forever and tattoo it on the architecture doc.” The consistency–availability trade-off fires <em>during partitions</em>. The trade-off you live with every day — on every query path in a healthy cluster — is latency versus consistency. That everyday axis is what PACELC makes explicit.</p>
-      <p>If you’ve already internalized ACID vs BASE and sharding vs replication, this post is the decision framework those pieces sit inside: what C/A/P actually mean, why partitions force CP vs AP, how the consistency spectrum maps to real operations, and how to navigate per-query instead of per-system.</p>
+      <p>CAP is often misread as "pick two of three forever and put it in the architecture doc." The consistency-availability trade-off fires <em>during partitions</em>. The trade-off you live with every day, on every query path in a healthy cluster, is latency versus consistency. That everyday axis is what PACELC makes explicit.</p>
+      <p>If you already know ACID vs BASE and sharding vs replication, this post is the decision frame those pieces sit inside: what C/A/P actually mean, why partitions force CP vs AP, how the consistency spectrum maps to real operations, and how to choose per query instead of per system.</p>
 
       <h2>CAP, defined without the folklore</h2>
-      <p>Brewer’s theorem says a distributed system cannot simultaneously guarantee all three:</p>
+      <p>Brewer's theorem says a distributed system cannot simultaneously guarantee all three:</p>
       <ul>
-        <li><strong>Consistency (C)</strong> — here, linearizability: every read sees the latest successful write; the system behaves as if there is a single up-to-date copy.</li>
-        <li><strong>Availability (A)</strong> — every request to a non-failed node gets a non-error response (it may be stale).</li>
-        <li><strong>Partition tolerance (P)</strong> — the system continues to operate despite network failures that split nodes into isolated groups.</li>
+        <li><strong>Consistency (C)</strong>: here, linearizability. Every read sees the latest successful write; the system behaves as if there is a single up-to-date copy.</li>
+        <li><strong>Availability (A)</strong>: every request to a non-failed node gets a non-error response (it may be stale).</li>
+        <li><strong>Partition tolerance (P)</strong>: the system continues to operate despite network failures that split nodes into isolated groups.</li>
       </ul>
       <p>Network partitions are not a rare academic event. Links flap, AZs degrade, GC pauses look like death, DNS lies. In practice you assume P is required. The real choice under a partition is <strong>CP</strong> or <strong>AP</strong>.</p>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/cap-triangle.svg" alt="CAP triangle: Consistency, Availability, Partition tolerance" loading="lazy" />
       </figure>
-      <p>Important: CAP “consistency” is not ACID’s C (constraints). Confusing them produces meetings that go nowhere. CAP C is about replica agreement under concurrent operations; ACID C is about invariants inside a transaction.</p>
+
+      <p>Important: CAP "consistency" is not ACID's C (constraints). Mixing them up produces meetings that go nowhere. CAP C is about replica agreement under concurrent operations; ACID C is about invariants inside a transaction.</p>
 
       <h2>CP vs AP in production language</h2>
-      <p><strong>CP (consistency + partition tolerance).</strong> During a split, some clients get errors or waits rather than a wrong answer. Bank ledger debit, inventory reservation that must not oversell, auth token revocation — better down than wrong. After recovery, you do not reconcile conflicting balances; you never created them.</p>
-      <p><strong>AP (availability + partition tolerance).</strong> During a split, reads and writes keep succeeding. Reads may be stale; writes may not be visible everywhere yet. Shopping cart contents, activity feeds, product recommendations — better available with a brief lie than a 503 on Black Friday.</p>
-      <p>Neither is “more distributed.” They encode different business failure modes.</p>
+      <p><strong>CP (consistency + partition tolerance).</strong> During a split, some clients get errors or waits rather than a wrong answer. Bank ledger debit, inventory reservation that must not oversell, auth token revocation: better down than wrong. After recovery, you do not reconcile conflicting balances; you never created them.</p>
+      <p><strong>AP (availability + partition tolerance).</strong> During a split, reads and writes keep succeeding. Reads may be stale; writes may not be visible everywhere yet. Shopping cart contents, activity feeds, product recommendations: better available with a brief lie than a 503 on Black Friday.</p>
+      <p>Neither is "more distributed." They encode different business failure modes.</p>
 
       <h2>The consistency spectrum (pick per operation)</h2>
       <p>Linearizability is the top of a ladder. Production systems climb down deliberately:</p>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/consistency-spectrum.svg" alt="Consistency spectrum from linearizable to eventual" loading="lazy" />
       </figure>
-      <p>Most mature SaaS codebases do <strong>not</strong> pick one rung for the whole system. Payments and auth use strong guarantees. Search indexing, analytics rollups, and “users also bought” tolerate eventual. The architecture doc should list <em>operations</em>, not a single CAP letter.</p>
+
+      <p>Most mature SaaS codebases do <strong>not</strong> pick one rung for the whole system. Payments and auth use strong guarantees. Search indexing, analytics rollups, and "users also bought" tolerate eventual. The architecture doc should list <em>operations</em>, not a single CAP letter.</p>
 
       <h2>PACELC: the rest of the time</h2>
       <p>CAP is silent about healthy clusters. PACELC fills that gap:</p>
       <blockquote>
         <p><strong>If Partition → Availability vs Consistency. Else → Latency vs Consistency.</strong></p>
       </blockquote>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/pacelc-tree.svg" alt="PACELC decision tree: partition then A vs C, else L vs C" loading="lazy" />
       </figure>
-      <p>Why latency vs consistency even when the network is fine? Because resilience requires replicas — often across AZs or regions. Strong consistency waits for synchronous replication acknowledgements. Asynchronous replication returns fast and converges later.</p>
+
+      <p>Why latency vs consistency even when the network is fine? Resilience requires replicas, often across AZs or regions. Strong consistency waits for synchronous replication acknowledgements. Asynchronous replication returns fast and converges later.</p>
       <p>Three replicas, synchronous credit of $100:</p>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/sync-replication.svg" alt="Steps of synchronous replication before client ack" loading="lazy" />
       </figure>
-      <p>Latency grows with replica count and RTT. Skip the wait and you have eventual consistency — PACELC’s EL (prefer latency) rather than EC (prefer consistency).</p>
+
+      <p>Latency grows with replica count and RTT. Skip the wait and you have eventual consistency: PACELC's EL (prefer latency) rather than EC (prefer consistency).</p>
 
       <h2>How common systems land on the map</h2>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/systems-pacelc.svg" alt="CAP and PACELC classification of popular systems" loading="lazy" />
       </figure>
+
       <p>The asterisk on MongoDB matters: defaults are not destiny. Quorum and read/write concern knobs move you along the spectrum per call.</p>
 
-      <h2>Navigation patterns that actually ship</h2>
-      <p><strong>Tunable consistency.</strong> Cassandra/Dynamo-style <code>ONE</code> / <code>QUORUM</code> / <code>ALL</code> (and the dual on writes). Use quorum when the answer must be recent; use ONE when a slightly stale read is fine and latency budgets are tight. Intuition: with replication factor N, choosing R and W such that R+W &gt; N gives overlap that detects the latest write — without needing every replica on every call.</p>
-      <p><strong>Async writes with sticky read-your-writes.</strong> Acknowledge the write quickly; for a few seconds (or until replication catches up), steer that user’s reads to the leader or a session-sticky replica. Most users never notice the underlying eventual model.</p>
-      <p><strong>Strong only when needed.</strong> A useful planning heuristic: ~20% of operations genuinely need CP (payments, auth, ledger, entitlement checks); ~80% are happier on AP/EL. Measure which bucket an endpoint is in before you pay Spanner prices for a feed query.</p>
+      <h2>Navigation patterns that ship</h2>
+      <p><strong>Tunable consistency.</strong> Cassandra/Dynamo-style <code>ONE</code> / <code>QUORUM</code> / <code>ALL</code> (and the dual on writes). Use quorum when the answer must be recent; use ONE when a slightly stale read is fine and latency budgets are tight. With replication factor N, choosing R and W such that R+W &gt; N gives overlap that detects the latest write, without needing every replica on every call.</p>
+      <p><strong>Async writes with sticky read-your-writes.</strong> Acknowledge the write quickly; for a few seconds (or until replication catches up), steer that user's reads to the leader or a session-sticky replica. Most users never notice the underlying eventual model.</p>
+      <p><strong>Strong only when needed.</strong> A useful planning heuristic: roughly 20% of operations genuinely need CP (payments, auth, ledger, entitlement checks); roughly 80% are happier on AP/EL. Check which bucket an endpoint is in before you pay Spanner prices for a feed query.</p>
 
       <h2>Multi-tenant SaaS lens</h2>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/saas-consistency-lens.svg" alt="Which SaaS workloads prefer strong vs eventual consistency" loading="lazy" />
       </figure>
-      <p>Within a tenant, the domain is often small enough that strong consistency is cheap — especially with DB-per-tenant. Cross-tenant aggregates (billing rollups, platform analytics) almost always accept eventual. Shared-schema multi-tenancy makes CP harder: one hot tenant’s quorum traffic shares fate with everyone else. Isolation model and consistency model are coupled decisions.</p>
 
-      <h2>What to tattoo on the architecture doc</h2>
-      <p>Not “we are a CP system.” Tattoo the <em>operation</em>:</p>
+      <p>Within a tenant, the domain is often small enough that strong consistency is cheap, especially with DB-per-tenant. Cross-tenant aggregates (billing rollups, platform analytics) almost always accept eventual. Shared-schema multi-tenancy makes CP harder: one hot tenant's quorum traffic shares fate with everyone else. Isolation model and consistency model are coupled decisions.</p>
+
+      <h2>What belongs in the architecture doc</h2>
+      <p>Not "we are a CP system." Write the <em>operation</em>:</p>
       <ul>
-        <li><code>POST /charges</code> — linearizable; fail closed on partition.</li>
-        <li><code>GET /feed</code> — eventual; prefer availability; read-your-writes for the authoring user.</li>
-        <li><code>GET /search</code> — eventual; index lag of a few seconds is an SLO, not an incident.</li>
+        <li><code>POST /charges</code>: linearizable; fail closed on partition.</li>
+        <li><code>GET /feed</code>: eventual; prefer availability; read-your-writes for the authoring user.</li>
+        <li><code>GET /search</code>: eventual; index lag of a few seconds is an SLO, not an incident.</li>
       </ul>
       <p>That list drives database choice, quorum settings, retry policy, and what you tell support when an AZ dies.</p>
 
 
       <h2>A worked partition scenario</h2>
-      <p>Two AZs, a ledger service, replication factor three. AZ-B loses connectivity to AZ-A for ninety seconds. Under <strong>CP</strong>, the minority side refuses writes to the account balance: clients get timeouts or 503s, support sees errors, balances stay correct. Under <strong>AP</strong>, both sides accept transfers; when the link heals you reconcile conflicting histories — last-write-wins, merge functions, or human ops. Banks choose the first pain. Collaborative carts often choose the second.</p>
-      <p>Same cluster, healthy network, cross-region replica: every strongly consistent read now waits on the far RTT. That is PACELC’s Else branch. Product managers feel it as “the page got slow after we added DR,” not as a theorem.</p>
+      <p>Two AZs, a ledger service, replication factor three. AZ-B loses connectivity to AZ-A for ninety seconds. Under <strong>CP</strong>, the minority side refuses writes to the account balance: clients get timeouts or 503s, support sees errors, balances stay correct. Under <strong>AP</strong>, both sides accept transfers; when the link heals you reconcile conflicting histories (last-write-wins, merge functions, or human ops). Banks choose the first pain. Collaborative carts often choose the second.</p>
+      <p>Same cluster, healthy network, cross-region replica: every strongly consistent read now waits on the far RTT. That is PACELC's Else branch. Product managers feel it as "the page got slow after we added DR," not as a theorem.</p>
 
       <h2>Anti-patterns</h2>
       <ul>
-        <li>Declaring the company “AP” so every team stops thinking about which endpoints lie.</li>
-        <li>Using eventual consistency for entitlement checks (“user still has admin for 30s after revoke”) without an explicit risk acceptance.</li>
-        <li>Copying Spanner into the diagram when your write rate and team cannot operate it — then running Mongo on defaults anyway.</li>
-        <li>Measuring only availability SLOs and ignoring “stale read” as a user-visible failure mode.</li>
+        <li>Declaring the company "AP" so every team stops thinking about which endpoints lie.</li>
+        <li>Using eventual consistency for entitlement checks ("user still has admin for 30s after revoke") without an explicit risk acceptance.</li>
+        <li>Copying Spanner into the diagram when your write rate and team cannot operate it, then running Mongo on defaults anyway.</li>
+        <li>Measuring only availability SLOs and ignoring "stale read" as a user-visible failure mode.</li>
       </ul>
 
       <h2>Key takeaways</h2>
       <ol>
         <li>CAP binds under partition; partitions are inevitable, so the live choice is CP vs AP.</li>
-        <li>CAP consistency means linearizability — stronger than most product language of “consistent.”</li>
+        <li>CAP consistency means linearizability, which is stronger than most product language of "consistent."</li>
         <li>PACELC adds the everyday axis: latency vs consistency when the network is fine.</li>
         <li>Real systems pick per operation along a spectrum, not one letter for the fleet.</li>
-        <li>Tunable quorums, sticky read-your-writes, and “strong only for money/auth” are how you navigate without dogma.</li>
+        <li>Tunable quorums, sticky read-your-writes, and "strong only for money/auth" are how you navigate without dogma.</li>
         <li>For SaaS: strong inside the tenant where it matters; eventual for feeds, search, and cross-tenant analytics.</li>
       </ol>
       <p>Stop arguing about whether the company is CP or AP. Argue about the query.</p>
-
-    </article>
+</article>
 
         <footer class="site-footer">
       <span>© Alex Razkevich</span>

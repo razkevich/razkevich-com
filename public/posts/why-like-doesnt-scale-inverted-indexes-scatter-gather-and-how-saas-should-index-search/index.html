@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Why LIKE Doesn't Scale: Inverted Indexes, Scatter-Gather, and How SaaS Should Index Search · Alex Razkevich</title>
-  <meta name="description" content="Product search and faceted UX need a different structure than OLTP. Inverted indexes, BM25, scatter-gather, async indexing via outbox/CDC, tenant isolation, and hybrid vector retrieval." />
+  <title>Why LIKE Doesn&#x27;t Scale: Inverted Indexes, Scatter-Gather, and How SaaS Should Index Search · Alex Razkevich</title>
+  <meta name="description" content="Product search needs a different structure than OLTP. Inverted indexes, BM25, scatter-gather, async indexing via outbox/CDC, tenant isolation, and hybrid BM25 + vector retrieval." />
   <meta name="color-scheme" content="light dark" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
@@ -23,92 +23,104 @@
     </header>
 
     <p class="back"><a href="/">← All posts</a></p>
-    <h1 class="page-title">Why LIKE Doesn't Scale: Inverted Indexes, Scatter-Gather, and How SaaS Should Index Search</h1>
+    <h1 class="page-title">Why LIKE Doesn&#x27;t Scale: Inverted Indexes, Scatter-Gather, and How SaaS Should Index Search</h1>
     <p class="meta">September 25, 2026</p>
     <article class="prose">
       <p><code>WHERE title ILIKE '%wireless%'</code> works in a demo and dies in production. Leading wildcards skip B-trees, faceted navigation turns into a pile of <code>GROUP BY</code>s, typo tolerance becomes a science project, and multi-tenant filters fight the query planner. Product search, log analytics, and knowledge bases need a different data structure than OLTP tables.</p>
-      <p>This post walks the mechanism: inverted indexes, distributed scatter-gather, relevance (BM25 and friends), engine choices, SaaS tenancy of indexes, and why async indexing via outbox/CDC beats dual-writing your search cluster. Vectors and hybrid retrieval close the loop — as a section, not a rewrite of the whole article.</p>
+      <p>This post covers the mechanism: inverted indexes, distributed scatter-gather, relevance (BM25 and friends), engine choices, SaaS tenancy of indexes, and why async indexing via outbox/CDC beats dual-writing your search cluster. Vectors and hybrid retrieval close the loop as a section, not a rewrite of the whole article.</p>
 
       <h2>What SQL struggles with</h2>
       <ul>
         <li><strong>Full-text</strong> across large corpora with ranking, not boolean presence.</li>
-        <li><strong>Fuzzy / typo-tolerant</strong> matching (“iphne case”).</li>
-        <li><strong>Facets</strong> — counts per brand/size/price bucket over the current result set.</li>
+        <li><strong>Fuzzy / typo-tolerant</strong> matching ("iphne case").</li>
+        <li><strong>Facets</strong>: counts per brand/size/price bucket over the current result set.</li>
         <li><strong>Multi-language</strong> analysis, stemming, and ranking.</li>
-        <li><strong>Relevance tuning</strong> — field boosts, freshness, personalization.</li>
+        <li><strong>Relevance tuning</strong>: field boosts, freshness, personalization.</li>
       </ul>
-      <p>Postgres <code>tsvector</code> / <code>pg_trgm</code> are excellent under roughly a million documents for many apps. Past that — or when you need distributed facets and relevance labs — you want a search engine.</p>
+      <p>Postgres <code>tsvector</code> / <code>pg_trgm</code> are excellent under roughly a million documents for many apps. Past that, or when you need distributed facets and relevance labs, you want a search engine.</p>
 
       <h2>Inverted index: the core idea</h2>
       <p>Instead of scanning documents for a term, store term → list of documents (a posting list). Multi-term queries intersect lists.</p>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/inverted-index.svg" alt="Inverted index mapping terms to document postings" loading="lazy" />
       </figure>
+
       <p>Term lookup is effectively dictionary-cheap; cost shifts to intersecting and scoring postings. That is why search engines feel instant on corpora that would melt a sequential <code>LIKE</code>.</p>
 
       <h2>Distributed architecture: scatter-gather</h2>
       <p>Indices shard across nodes. A coordinator receives the query, fans it out to relevant shards, merges top-k results, and returns.</p>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/scatter-gather.svg" alt="Scatter-gather search across shards with merge top-k" loading="lazy" />
       </figure>
-      <p>Tail latency is dominated by the slowest shard — stragglers matter more than average shard speed. Shard count is a <strong>one-way door</strong> in many engines (primary shard count fixed at index creation): overshard and you pay coordination overhead forever; undershard and reindexing is a project. Plan capacity with headroom, then use replicas for read scale and failover.</p>
-      <p>Routing is typically <code>hash(routing_key) % primary_shards</code>. For SaaS, routing on <code>tenant_id</code> can colocate a tenant’s docs (better filters, noisy-neighbor risk) or you keep global hashing and enforce tenant filters on every query — mandatory either way to avoid cross-tenant leakage.</p>
+
+      <p>Tail latency is dominated by the slowest shard. Stragglers matter more than average shard speed. Shard count is a <strong>one-way door</strong> in many engines (primary shard count fixed at index creation): overshard and you pay coordination overhead forever; undershard and reindexing is a project. Plan capacity with headroom, then use replicas for read scale and failover.</p>
+      <p>Routing is typically <code>hash(routing_key) % primary_shards</code>. For SaaS, routing on <code>tenant_id</code> can colocate a tenant's docs (better filters, noisier neighbors) or you keep global hashing and enforce tenant filters on every query. Either way, mandatory filters are required to avoid cross-tenant leakage.</p>
 
       <h2>Engine choices (short map)</h2>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/search-stack-choices.svg" alt="When to choose each search technology" loading="lazy" />
       </figure>
+
       <p>Pick based on ops appetite and query shape, not blog-post fashion. Moving off a wrong search cluster is more painful than migrating a cache.</p>
 
       <h2>Relevance: BM25 and then some</h2>
-      <p>BM25 (Best Matching 25) is still the workhorse lexical scorer — an evolution of TF-IDF that saturates term frequency (tenth “running” helps less than the second) and normalizes for document length:</p>
-      <pre><code>score(q,d) ≈ Σ IDF(t) · (tf · (k1+1)) / (tf + k1 · (1-b + b·|d|/avgdl))</code></pre>
+      <p>BM25 (Best Matching 25) is still the workhorse lexical scorer, an evolution of TF-IDF that saturates term frequency (the tenth "running" helps less than the second) and normalizes for document length:</p>
+      
+<pre><code>score(q,d) ≈ Σ IDF(t) · (tf · (k1+1)) / (tf + k1 · (1-b + b·|d|/avgdl))</code></pre>
+
       <p>Defaults are fine to start. Then add:</p>
       <ul>
-        <li><strong>Field boosts</strong> — title matches beat body matches.</li>
-        <li><strong>Function score</strong> — blend BM25 with recency, popularity, stock, margin.</li>
-        <li><strong>Learning-to-rank</strong> — optimize from click/order signals when you have volume.</li>
-        <li><strong>Hybrid</strong> — BM25 candidates ∪ vector ANN, then re-rank (see below).</li>
+        <li><strong>Field boosts</strong>: title matches beat body matches.</li>
+        <li><strong>Function score</strong>: blend BM25 with recency, popularity, stock, margin.</li>
+        <li><strong>Learning-to-rank</strong>: optimize from click/order signals when you have volume.</li>
+        <li><strong>Hybrid</strong>: BM25 candidates ∪ vector ANN, then re-rank (see below).</li>
       </ul>
 
       <h2>Indexing path: do not dual-write the search cluster</h2>
       <p>Sync dual-write (OLTP transaction + immediate index update) recreates the dual-write problem: one side succeeds, the other fails, search lies. Prefer async:</p>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/index-via-outbox.svg" alt="Bad dual-write to search vs good outbox/CDC indexing" loading="lazy" />
       </figure>
-      <p>Seconds of lag are usually an acceptable SLO for product search (“new SKU visible within 5s”). You gain a single source of truth and the same reliability story as domain events. (See the outbox/CDC post for the relay mechanics.)</p>
+
+      <p>Seconds of lag are usually an acceptable SLO for product search ("new SKU visible within 5s"). You gain a single source of truth and the same reliability story as domain events. (See the outbox/CDC post for the relay mechanics.)</p>
 
       <h2>Ops that keep search boring</h2>
       <ul>
-        <li><strong>Reindex via aliases</strong> — build <code>products_v2</code>, atomically swap alias <code>products</code>; never reindex in place as the live read target.</li>
-        <li><strong>Hot / warm / cold</strong> — recent indices on fast nodes; old logs on cheap storage.</li>
-        <li><strong>Per-tenant index vs shared index + filter</strong> — dedicated indices isolate noisy tenants and simplify deletes; shared indices maximize density. Enterprise silos often get dedicated indices; the long tail shares with a mandatory <code>tenant_id</code> filter (and document-level security where available).</li>
-        <li><strong>Mapping discipline</strong> — accidental <code>text</code> on high-cardinality IDs explodes memory; explicit mappings beat dynamic surprises.</li>
+        <li><strong>Reindex via aliases</strong>: build <code>products_v2</code>, atomically swap alias <code>products</code>; never reindex in place as the live read target.</li>
+        <li><strong>Hot / warm / cold</strong>: recent indices on fast nodes; old logs on cheap storage.</li>
+        <li><strong>Per-tenant index vs shared index + filter</strong>: dedicated indices isolate noisy tenants and simplify deletes; shared indices maximize density. Enterprise silos often get dedicated indices; the long tail shares with a mandatory <code>tenant_id</code> filter (and document-level security where available).</li>
+        <li><strong>Mapping discipline</strong>: accidental <code>text</code> on high-cardinality IDs explodes memory; explicit mappings beat dynamic surprises.</li>
       </ul>
 
-      <h2>The vector wave (closing section, not the whole post)</h2>
-      <p>Dense embeddings let “budget-friendly transportation” match “affordable cars” without shared keywords. Pinecone, Qdrant, pgvector, and ES/OpenSearch dense_vector fields all ship ANN (HNSW/IVF). RAG patterns for SaaS-AI sit on the same rails: retrieve, then generate — still with tenant filters on retrieval.</p>
-      <figure class="diagram">
+      <h2>The vector wave</h2>
+      <p>Dense embeddings let "budget-friendly transportation" match "affordable cars" without shared keywords. Pinecone, Qdrant, pgvector, and ES/OpenSearch dense_vector fields all ship ANN (HNSW/IVF). RAG patterns for SaaS-AI sit on the same rails: retrieve, then generate, still with tenant filters on retrieval.</p>
+      
+<figure class="diagram">
         <img src="images/hybrid-search.svg" alt="Hybrid BM25 and vector ANN search with merge and filters" loading="lazy" />
       </figure>
-      <p>Hybrid is the pragmatic default in 2026: lexical precision for SKUs and error codes, vectors for natural language, re-rank for the blend. Don’t throw away BM25 because embeddings are trendy — the failure modes differ, and users still type exact model numbers.</p>
+
+      <p>Hybrid is the pragmatic default in 2026: lexical precision for SKUs and error codes, vectors for natural language, re-rank for the blend. Do not throw away BM25 because embeddings are trendy. The failure modes differ, and users still type exact model numbers.</p>
 
 
-      <h2>Analysis pipelines (why “search” is not just storage)</h2>
-      <p>Before indexing, text passes through analyzers: tokenize, lowercase, strip stopwords, stem or lemmatize, maybe synonym expansion. E-commerce may treat <code>iPhone-15</code> and <code>iPhone 15</code> as one token; legal search may preserve punctuation. Getting analysis wrong is a relevance bug that looks like “Elasticsearch is bad.” Invest in a small golden-query suite per locale before tuning BM25 knobs in production.</p>
+      <h2>Analysis pipelines (why "search" is not just storage)</h2>
+      <p>Before indexing, text passes through analyzers: tokenize, lowercase, strip stopwords, stem or lemmatize, maybe synonym expansion. E-commerce may treat <code>iPhone-15</code> and <code>iPhone 15</code> as one token; legal search may preserve punctuation. Getting analysis wrong is a relevance bug that looks like "Elasticsearch is bad." Invest in a small golden-query suite per locale before tuning BM25 knobs in production.</p>
       <p>Queries deserve the same care: intent classification, locale detection, and filters (tenant, ACL, in-stock) applied <em>before</em> or as part of retrieval so you never re-rank documents the caller must not see.</p>
 
       <h2>Capacity and failure modes</h2>
       <ul>
-        <li><strong>Heap pressure from fielddata / high-cardinality aggs</strong> — facet carefully; prefer doc values / keyword fields.</li>
-        <li><strong>Mapping explosions</strong> — user-defined fields without limits.</li>
-        <li><strong>Reindex storms</strong> — changing analyzers requires a new index; schedule and throttle.</li>
-        <li><strong>Split-brain ops</strong> — treat search as a system with runbooks, not a library you “just call.”</li>
+        <li><strong>Heap pressure from fielddata / high-cardinality aggs</strong>: facet carefully; prefer doc values / keyword fields.</li>
+        <li><strong>Mapping explosions</strong>: user-defined fields without limits.</li>
+        <li><strong>Reindex storms</strong>: changing analyzers requires a new index; schedule and throttle.</li>
+        <li><strong>Split-brain ops</strong>: treat search as a system with runbooks, not a library you "just call."</li>
       </ul>
       <p>For multi-tenant SaaS, delete-by-tenant must be complete: index documents, snapshots, and any embedding store. Partial deletes are GDPR incidents with extra steps.</p>
 
 
-      <p>One more operational habit: expose search freshness as a first-class metric (max indexing lag by tenant or index). Product and support should know whether “I can’t find the SKU I just created” is expected eventual consistency or a stuck CDC pipeline.</p>
+      <p>One more operational habit: expose search freshness as a first-class metric (max indexing lag by tenant or index). Product and support should know whether "I can't find the SKU I just created" is expected eventual consistency or a stuck CDC pipeline.</p>
 
       <h2>Key takeaways</h2>
       <ol>
@@ -117,12 +129,11 @@
         <li>Scatter-gather latency tracks the slowest shard; shard count is hard to undo.</li>
         <li>BM25 + boosts/function score covers most lexical needs; add LTR/hybrid when data justifies it.</li>
         <li>Index asynchronously via outbox/CDC; treat search lag as an SLO.</li>
-        <li>Enforce tenant isolation with dedicated indices or mandatory filters — never trust the client.</li>
-        <li>Hybrid BM25 ∪ vectors is complementary, not a replacement religion.</li>
+        <li>Enforce tenant isolation with dedicated indices or mandatory filters. Never trust the client.</li>
+        <li>Hybrid BM25 ∪ vectors is complementary, not a replacement.</li>
       </ol>
-      <p>Search is a serving system with its own consistency, capacity, and tenancy story. Design it that way — not as an afterthought <code>ILIKE</code> on the primary.</p>
-
-    </article>
+      <p>Search is a serving system with its own consistency, capacity, and tenancy story. Design it that way, not as an afterthought <code>ILIKE</code> on the primary.</p>
+</article>
 
         <footer class="site-footer">
       <span>© Alex Razkevich</span>

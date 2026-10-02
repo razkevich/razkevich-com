@@ -12,20 +12,20 @@
       "path": "posts/why-like-doesnt-scale-inverted-indexes-scatter-gather-and-how-saas-should-index-search/index.html"
     },
     {
-      "title": "Multi-Tenancy Is the Real SaaS Architecture: Isolation Models, Noisy Neighbors, and Database Choices That Stick",
+      "title": "Multi-Tenancy: Isolation Models, Noisy Neighbors, and Database Choices That Stick",
       "slug": "multi-tenancy-is-the-real-saas-architecture-isolation-models-noisy-neighbors-and-database-choices-that-stick",
       "date": "2026-06-12",
       "date_human": "June 12, 2026",
-      "excerpt": "Almost every SaaS decision is a tenancy decision in disguise. Isolation models, noisy-neighbor controls, DB-per-tenant vs shared schema + RLS, tiering, cells, and GDPR-complete offboarding.",
+      "excerpt": "Almost every SaaS decision is a tenancy decision. Isolation models, noisy-neighbor controls, DB-per-tenant vs shared schema + RLS, tiering, cells, and GDPR-complete offboarding.",
       "url": "/posts/multi-tenancy-is-the-real-saas-architecture-isolation-models-noisy-neighbors-and-database-choices-that-stick/",
       "path": "posts/multi-tenancy-is-the-real-saas-architecture-isolation-models-noisy-neighbors-and-database-choices-that-stick/index.html"
     },
     {
-      "title": "The Dual-Write Problem: Why Your Events Lie — and How the Outbox Pattern Fixes It",
+      "title": "The Dual-Write Problem: Why Your Events Lie, and How the Outbox Pattern Fixes It",
       "slug": "the-dual-write-problem-why-your-events-lie-and-how-the-outbox-pattern-fixes-it",
       "date": "2026-03-05",
       "date_human": "March 5, 2026",
-      "excerpt": "You cannot atomically write a DB row and publish to a broker without distributed transactions. Outbox + polling or CDC relay, inbox idempotency, and when not to bother — the app-level complement to Kafka EOS.",
+      "excerpt": "You cannot atomically write a DB row and publish to a broker without distributed transactions. Outbox + polling or CDC relay, inbox idempotency, and when not to bother: the app-level complement to Kafka EOS.",
       "url": "/posts/the-dual-write-problem-why-your-events-lie-and-how-the-outbox-pattern-fixes-it/",
       "path": "posts/the-dual-write-problem-why-your-events-lie-and-how-the-outbox-pattern-fixes-it/index.html"
     },
@@ -34,16 +34,16 @@
       "slug": "cap-is-incomplete-pacelc-and-the-consistency-choices-you-make-on-every-query",
       "date": "2025-12-04",
       "date_human": "December 4, 2025",
-      "excerpt": "CAP is misread as pick-two-forever; the trade-off fires during partitions. PACELC adds the everyday latency-vs-consistency axis. Pick consistency per operation — especially in multi-tenant SaaS.",
+      "excerpt": "CAP is misread as pick-two-forever; the trade-off fires during partitions. PACELC adds the everyday latency-vs-consistency axis. Pick consistency per operation, especially in multi-tenant SaaS.",
       "url": "/posts/cap-is-incomplete-pacelc-and-the-consistency-choices-you-make-on-every-query/",
       "path": "posts/cap-is-incomplete-pacelc-and-the-consistency-choices-you-make-on-every-query/index.html"
     },
     {
-      "title": "Caching That Actually Helps: Hit Rates, Invalidation, and the Patterns That Don't Blow Up Production",
+      "title": "Caching: Hit Rates, Invalidation, and Patterns That Hold Up in Production",
       "slug": "caching-that-actually-helps-hit-rates-invalidation-and-the-patterns-that-dont-blow-up-production",
       "date": "2025-09-18",
       "date_human": "September 18, 2025",
-      "excerpt": "Caching is not a speed button — it is an amortized latency bet that loses when miss rate or stampede costs dominate. Decision math, layer stack, read/write patterns, invalidation, and stampede mitigations for production SaaS.",
+      "excerpt": "Caching is an amortized latency bet that loses when miss rate or stampede costs dominate. Decision math, layer stack, read/write patterns, invalidation, and stampede mitigations for production SaaS.",
       "url": "/posts/caching-that-actually-helps-hit-rates-invalidation-and-the-patterns-that-dont-blow-up-production/",
       "path": "posts/caching-that-actually-helps-hit-rates-invalidation-and-the-patterns-that-dont-blow-up-production/index.html"
     },

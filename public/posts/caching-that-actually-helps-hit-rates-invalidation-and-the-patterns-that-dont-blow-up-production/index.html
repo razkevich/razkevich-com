@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Caching That Actually Helps: Hit Rates, Invalidation, and the Patterns That Don't Blow Up Production · Alex Razkevich</title>
-  <meta name="description" content="Caching is not a speed button — it is an amortized latency bet. Decision math, layer stack, read/write patterns, stampede mitigations, and when not to cache." />
+  <title>Caching: Hit Rates, Invalidation, and Patterns That Hold Up in Production · Alex Razkevich</title>
+  <meta name="description" content="Caching is an amortized latency bet that loses when miss rate or stampede costs dominate. Decision math, layer stack, read/write patterns, invalidation, and stampede mitigations." />
   <meta name="color-scheme" content="light dark" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
@@ -23,115 +23,136 @@
     </header>
 
     <p class="back"><a href="/">← All posts</a></p>
-    <h1 class="page-title">Caching That Actually Helps: Hit Rates, Invalidation, and the Patterns That Don't Blow Up Production</h1>
+    <h1 class="page-title">Caching: Hit Rates, Invalidation, and Patterns That Hold Up in Production</h1>
     <p class="meta">September 18, 2025</p>
     <article class="prose">
-      <p>Caching is not a speed button. It is an amortized latency bet that loses whenever the miss rate is high enough, or when a stampede turns one expired key into a thundering herd against your database. Teams that “just add Redis” without measuring often discover the cache <em>adds</em> latency on the path that actually matters.</p>
-      <p>This post is the mechanism-first version: the break-even formula, the layer stack (CDN only briefly — that infrastructure story is already covered elsewhere), the read and write patterns that don’t blow up production, invalidation that scales past TTL-only, and the stampede mitigations that belong in every SaaS cache design.</p>
+      <p>Caching is not a speed button. It is an amortized latency bet: you win when hits dominate, and you lose when the miss rate is high or a stampede turns one expired key into a herd against the database. Teams that "just add Redis" without measuring often find the cache <em>adds</em> latency on the path that matters.</p>
+      <p>Below is the practical version: the break-even formula, the layer stack (CDN only briefly; that infrastructure story is already covered elsewhere), read and write patterns that hold up under load, invalidation that goes beyond TTL, and stampede mitigations every SaaS cache design should include.</p>
 
       <h2>The decision formula</h2>
       <p>Every request that goes through a cache pays a lookup cost. On a hit you win; on a miss you pay lookup <em>plus</em> the original data access. The average latency is:</p>
-      <pre><code>AverageTime = DataAccessTime × CacheMissRate + CacheAccessTime</code></pre>
+      
+<pre><code>AverageTime = DataAccessTime × CacheMissRate + CacheAccessTime</code></pre>
+
       <p>Work the numbers. Suppose <code>DataAccessTime = 100ms</code> (DB + network) and <code>CacheAccessTime = 20ms</code> (Redis round-trip in the same AZ). Without a cache every request costs 100ms. With a cache:</p>
-      <pre><code>100 × CacheMissRate + 20  &lt;  100
+      
+<pre><code>100 × CacheMissRate + 20  &lt;  100
 CacheMissRate            &lt;  0.8</code></pre>
-      <p>If your miss rate is ≥ 80%, the cache is net-negative on latency. That threshold moves with the ratio of the two times: a 2ms in-process cache against a 100ms DB gives you a much higher miss budget; a 40ms remote cache against an 80ms DB is ruthless. Measure hit rate and p99 before you celebrate the architecture diagram.</p>
-      <p>Two failure modes hide in “we cached it”:</p>
+
+      <p>If your miss rate is 80% or higher, the cache is net-negative on latency. That threshold moves with the ratio of the two times: a 2ms in-process cache against a 100ms DB gives you a much higher miss budget; a 40ms remote cache against an 80ms DB is unforgiving. Measure hit rate and p99 before you trust the diagram.</p>
+      <p>Two failure modes hide inside "we cached it":</p>
       <ul>
         <li>Misses still pay the cache round-trip before falling back to the source.</li>
-        <li>Population work (CPU, memory, network) must be justified by the hit volume that follows.</li>
+        <li>Population work (CPU, memory, network) only pays off if enough hits follow.</li>
       </ul>
 
       <h2>Latency hierarchy (why a hit still matters)</h2>
-      <p>When a cache hit replaces a network hop, the win is often orders of magnitude — not a few percent:</p>
-      <figure class="diagram">
+      <p>When a cache hit replaces a network hop, the win is often orders of magnitude, not a few percent:</p>
+      
+<figure class="diagram">
         <img src="images/latency-hierarchy.svg" alt="Latency hierarchy from register to cross-region" loading="lazy" />
       </figure>
-      <p>An in-process hit that avoids Redis is cheap. A Redis hit that avoids Postgres is usually worth it. A Redis miss that still hits Postgres is the case the formula above is warning you about.</p>
+
+      <p>An in-process hit that avoids Redis is cheap. A Redis hit that avoids Postgres is usually worth it. A Redis miss that still hits Postgres is exactly the case the formula above warns about.</p>
 
       <h2>The layer stack</h2>
-      <p>Modern apps don’t have “a cache.” They have a stack where each layer shields the next:</p>
-      <figure class="diagram">
+      <p>Modern apps rarely have "a cache." They have a stack where each layer shields the next:</p>
+      
+<figure class="diagram">
         <img src="images/cache-layers.svg" alt="Cache layers from client to database" loading="lazy" />
       </figure>
+
       <p><strong>Client.</strong> Browsers honor <code>Cache-Control</code>, <code>ETag</code>, and <code>Last-Modified</code>. <code>max-age=3600</code> caches for an hour; <code>no-cache</code> stores but revalidates; <code>no-store</code> skips caching. Conditional requests return <code>304 Not Modified</code> without a body when the content is unchanged.</p>
-      <p><strong>CDN.</strong> Edge nodes serve static (and sometimes API) content near the user. Pull CDN fetches from origin on first miss; Push CDN uploads ahead of traffic (releases, large media). Keep this layer short here — the networking post already covers CDN as infrastructure.</p>
-      <figure class="diagram">
+      <p><strong>CDN.</strong> Edge nodes serve static (and sometimes API) content near the user. Pull CDN fetches from origin on first miss; Push CDN uploads ahead of traffic (releases, large media). I will keep this short here; the networking post already covers CDN as infrastructure.</p>
+      
+<figure class="diagram">
         <img src="images/pull-vs-push-cdn.svg" alt="Comparison of pull CDN vs push CDN" loading="lazy" />
       </figure>
+
       <p><strong>Reverse proxy.</strong> Nginx in front of <code>/products/123</code> can serve a cached HTML/JSON response without waking the app. Good for mostly-static pages and long-TTL API responses; pair with <code>stale-while-revalidate</code> when you can.</p>
-      <p><strong>Application.</strong> In-process maps for hot, tiny working sets; Redis/Memcached for shared state across pods. The app owns key design, TTL, and invalidation — this is where most SaaS footguns live.</p>
+      <p><strong>Application.</strong> In-process maps for hot, tiny working sets; Redis/Memcached for shared state across pods. The app owns key design, TTL, and invalidation. This is where most SaaS footguns live.</p>
       <p><strong>Database.</strong> Buffer pools and plan caches are already there. Application-level query-result and object caches sit on top when the same rows or aggregates are hit repeatedly.</p>
 
       <h2>Read-intensive patterns</h2>
       <p><strong>Cache-aside (lazy loading).</strong> The application owns the cache. Read path:</p>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/cache-aside.svg" alt="Cache-aside flow: HIT returns, MISS loads DB then SETs" loading="lazy" />
       </figure>
-      <p>Simple, flexible, and the default for most services. Cost: first request after expiry is always a miss, and the app must own invalidation on writes.</p>
+
+      <p>Simple, flexible, and the default for most services. Cost: the first request after expiry is always a miss, and the app must own invalidation on writes.</p>
       <p><strong>Read-through.</strong> The app always talks to the cache; the cache library loads from the store on miss. Cleaner call sites, less control over population policy.</p>
-      <p><strong>Refresh-ahead.</strong> Predict hot keys and refresh before TTL expires so users rarely see a miss. Useful for CDNs, trading boards, and anything with predictable peaks — wasteful if your predictor is wrong.</p>
+      <p><strong>Refresh-ahead.</strong> Predict hot keys and refresh before TTL expires so users rarely see a miss. Useful for CDNs, trading boards, and anything with predictable peaks. Wasteful if your predictor is wrong.</p>
 
       <h2>Write-intensive patterns</h2>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/write-patterns.svg" alt="Write-through, write-around, and write-back comparison" loading="lazy" />
       </figure>
-      <p><strong>Write-through</strong> keeps cache and store aligned; use it when wrong data is worse than slow writes (ledgers, inventory that must not lie).</p>
-      <p><strong>Write-around</strong> avoids polluting the cache with write-once keys (logs, bulk imports). The next read pays a miss — acceptable when re-reads are rare.</p>
-      <p><strong>Write-back / write-behind</strong> is the speed play: acknowledge after cache write, flush later. You traded durability. Fine for counters and ephemeral buffers; not fine for money.</p>
+
+      <p><strong>Write-through</strong> keeps cache and store aligned. Use it when wrong data is worse than slow writes (ledgers, inventory that must not lie).</p>
+      <p><strong>Write-around</strong> avoids polluting the cache with write-once keys (logs, bulk imports). The next read pays a miss, which is fine when re-reads are rare.</p>
+      <p><strong>Write-back / write-behind</strong> is the speed play: acknowledge after the cache write, flush later. You traded durability. Fine for counters and ephemeral buffers; not fine for money.</p>
 
       <h2>TTL, eviction, and jitter</h2>
-      <p>TTL bounds staleness. Too short → miss rate climbs. Too long → users see yesterday’s catalog. Identical TTLs across a hot key set expire together — synchronized expiry is a stampede invitation. Add jitter:</p>
-      <pre><code>ttl = base_ttl * (1 + uniform(-0.10, +0.10))   # ±10%</code></pre>
-      <p>Eviction when memory is full: <strong>LRU</strong> is the sensible default (recent ≈ relevant). <strong>LFU</strong> keeps stable popular items and can cling to yesterday’s viral post. <strong>ARC</strong> adapts between recency and frequency when you outgrow LRU and can afford the complexity. Name the algorithm; don’t cargo-cult “we use Redis” as if Redis’s default answers the access pattern.</p>
+      <p>TTL bounds staleness. Too short and the miss rate climbs. Too long and users see yesterday's catalog. Identical TTLs across a hot key set expire together, and synchronized expiry invites a stampede. Add jitter:</p>
+      
+<pre><code>ttl = base_ttl * (1 + uniform(-0.10, +0.10))   # ±10%</code></pre>
+
+      <p>Eviction when memory is full: <strong>LRU</strong> is the sensible default (recent ≈ relevant). <strong>LFU</strong> keeps stable popular items and can cling to yesterday's viral post. <strong>ARC</strong> adapts between recency and frequency when you outgrow LRU and can afford the complexity. Name the algorithm; "we use Redis" does not answer the access pattern by itself.</p>
 
       <h2>Invalidation beyond TTL</h2>
       <p>TTL-only is fine until a product price must change in seconds. Then you need explicit delete/refresh, or better: <strong>event-driven invalidation</strong>.</p>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/invalidation-pipeline.svg" alt="Cache invalidation via outbox/CDC and Kafka" loading="lazy" />
       </figure>
-      <p>Delete (evict) forces a miss on next read. Refresh writes the new value immediately when you already have it. Tagging and versioning scale invalidation: tag keys with <code>product:456</code> and drop the whole tag when that product changes; bump a version prefix (<code>v3:user:42</code>) when a release or schema change must nuke a generation of entries.</p>
+
+      <p>Delete (evict) forces a miss on next read. Refresh writes the new value immediately when you already have it. Tagging and versioning scale invalidation: tag keys with <code>product:456</code> and drop the whole tag when that product changes; bump a version prefix (<code>v3:user:42</code>) when a release or schema change must clear a generation of entries.</p>
 
       <h2>Stampede (thundering herd)</h2>
       <p>One hot key expires. N concurrent requests all miss. All N hit the database for the same row. Latency cliffs; DB CPU spikes; sometimes the cascade continues.</p>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/cache-stampede.svg" alt="Cache stampede timeline when a key expires" loading="lazy" />
       </figure>
+
       <p>Mitigations that work in production:</p>
       <ul>
         <li><strong>Single-flight / lock:</strong> only one loader proceeds; others wait or subscribe for the fill.</li>
         <li><strong>Stale-while-revalidate:</strong> serve the expired value while one background refresh runs.</li>
         <li><strong>Probabilistic early expiration:</strong> a few requests refresh slightly before TTL so expiry is soft.</li>
-        <li><strong>Negative caching:</strong> cache <code>NOT_FOUND</code> with a short TTL so missing keys don’t hammer the DB.</li>
-        <li><strong>TTL jitter:</strong> as above — desynchronize mass expiry.</li>
+        <li><strong>Negative caching:</strong> cache <code>NOT_FOUND</code> with a short TTL so missing keys do not hammer the DB.</li>
+        <li><strong>TTL jitter:</strong> as above. Desynchronize mass expiry.</li>
       </ul>
 
       <h2>Multi-tenant caching</h2>
-      <p>Always prefix by tenant. Never let a hot key from tenant A collide with tenant B’s namespace, and never share mutable tenant data under a global key:</p>
-      <pre><code>tenant:{tenant_id}:user:{user_id}
+      <p>Always prefix by tenant. Never let a hot key from tenant A collide with tenant B's namespace, and never share mutable tenant data under a global key:</p>
+      
+<pre><code>tenant:{tenant_id}:user:{user_id}
 tenant:{tenant_id}:product:{sku}</code></pre>
-      <p>Watch Redis memory as a noisy-neighbor surface: one tenant’s unbounded working set can evict everyone else’s hot keys. Per-tenant memory budgets, key counts, or separate Redis logical DBs / clusters for large customers turn this from a surprise into a quota.</p>
+
+      <p>Watch Redis memory as a noisy-neighbor surface: one tenant's unbounded working set can evict everyone else's hot keys. Per-tenant memory budgets, key counts, or separate Redis logical DBs / clusters for large customers turn this from a surprise into a quota.</p>
 
       <h2>When not to cache</h2>
       <ul>
-        <li>Write-heavy unique keys with almost no re-reads — you pay population cost for nothing.</li>
-        <li>Rapidly changing inventory without an invalidation path — you’ll serve lies.</li>
-        <li>Secrets and PII without encryption-at-rest controls and clear TTL/scrub policy.</li>
-        <li>Anything where you haven’t measured miss rate and source latency yet.</li>
+        <li>Write-heavy unique keys with almost no re-reads. You pay population cost for nothing.</li>
+        <li>Rapidly changing inventory without an invalidation path. You will serve lies.</li>
+        <li>Secrets and PII without encryption-at-rest controls and a clear TTL/scrub policy.</li>
+        <li>Anything where you have not measured miss rate and source latency yet.</li>
       </ul>
 
       <h2>Key takeaways</h2>
       <ol>
-        <li>Compute the miss-rate break-even before adding a cache layer; low-hit caches add latency.</li>
-        <li>Design a stack (client → CDN → proxy → app → Redis → DB), not a single “cache box.”</li>
+        <li>Compute the miss-rate break-even before adding a cache layer. Low-hit caches add latency.</li>
+        <li>Design a stack (client → CDN → proxy → app → Redis → DB), not a single "cache box."</li>
         <li>Pick read/write patterns deliberately: cache-aside for most apps; write-through when consistency wins; write-back only when durability risk is acceptable.</li>
         <li>TTL + jitter + LRU (or ARC) cover the common case; event-driven invalidation covers the rest.</li>
-        <li>Stampede is a production regularity — single-flight, SWR, negative caching, jitter.</li>
-        <li>Tenant-prefix every key; treat Redis memory as a multi-tenant resource.</li>
+        <li>Stampede is common in production. Use single-flight, SWR, negative caching, and jitter.</li>
+        <li>Tenant-prefix every key. Treat Redis memory as a multi-tenant resource.</li>
       </ol>
-      <p>Cache should be transparent, predictable, and measurable. The decision to use it belongs to metrics, not intuition — that’s when it stops being “another optimization” and becomes architecture.</p>
-
-    </article>
+      <p>A good cache is transparent, predictable, and measurable. The decision to use it belongs to metrics, not intuition.</p>
+</article>
 
         <footer class="site-footer">
       <span>© Alex Razkevich</span>

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Multi-Tenancy Is the Real SaaS Architecture: Isolation Models, Noisy Neighbors, and Database Choices That Stick · Alex Razkevich</title>
-  <meta name="description" content="Almost every SaaS decision is a tenancy decision in disguise. Isolation models, noisy-neighbor controls, DB-per-tenant vs shared schema + RLS, tiering, and tenant lifecycle." />
+  <title>Multi-Tenancy: Isolation Models, Noisy Neighbors, and Database Choices That Stick · Alex Razkevich</title>
+  <meta name="description" content="Almost every SaaS decision is a tenancy decision. Isolation models, noisy-neighbor controls, DB-per-tenant vs shared schema + RLS, tiering, cells, and GDPR-complete offboarding." />
   <meta name="color-scheme" content="light dark" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
@@ -23,99 +23,108 @@
     </header>
 
     <p class="back"><a href="/">← All posts</a></p>
-    <h1 class="page-title">Multi-Tenancy Is the Real SaaS Architecture: Isolation Models, Noisy Neighbors, and Database Choices That Stick</h1>
+    <h1 class="page-title">Multi-Tenancy: Isolation Models, Noisy Neighbors, and Database Choices That Stick</h1>
     <p class="meta">June 12, 2026</p>
     <article class="prose">
-      <p>Almost every SaaS decision — data model, deploy topology, billing, SLOs, even which cache keys you allow — is a tenancy decision in disguise. Teams that treat multi-tenancy as a <code>tenant_id</code> column bolted on late discover that isolation, noisy neighbors, and offboarding were the real architecture all along.</p>
+      <p>Almost every SaaS decision (data model, deploy topology, billing, SLOs, even which cache keys you allow) is a tenancy decision in disguise. Teams that treat multi-tenancy as a <code>tenant_id</code> column bolted on late discover that isolation, noisy neighbors, and offboarding were the real architecture all along.</p>
       <p>Rate limiting and bulkheads (covered elsewhere on this site) are tools <em>inside</em> tenancy. This post is the frame those tools hang on: isolation models, ops that see per-tenant health, tiering that matches revenue, database patterns that stick, and the lifecycle from provision to GDPR delete.</p>
 
       <h2>Isolation is the product promise</h2>
-      <p>Tenant isolation is the promise that customer A’s data, load, and failure modes do not become customer B’s incident. You can keep that promise at three primary levels — and most mature platforms mix them.</p>
-      <figure class="diagram">
+      <p>Tenant isolation is the promise that customer A's data, load, and failure modes do not become customer B's incident. You can keep that promise at three primary levels, and most mature platforms mix them.</p>
+      
+<figure class="diagram">
         <img src="images/isolation-models.svg" alt="Full, resource-level, and item-level isolation models" loading="lazy" />
       </figure>
+
       <p><strong>Full-stack isolation</strong> is what enterprise contracts and regulated workloads buy: separate databases, often separate clusters, sometimes separate networks. You sacrifice the SaaS cost curve for predictability and audit stories.</p>
       <p><strong>Resource-level isolation</strong> shares the application tier but keeps data stores, caches, and queues apart (or pooled with hard quotas). Most successful B2B SaaS lives here.</p>
       <p><strong>Item-level isolation</strong> shares infrastructure end-to-end; boundaries are application logic and row filters. Highest density, highest blast radius if a query forgets <code>tenant_id</code>.</p>
 
       <h2>Deployment-time vs runtime isolation</h2>
       <p><strong>Deployment-time</strong> makes boundaries explicit in infra: dedicated DB instance, dedicated namespace, dedicated Redis. Runtime logic stays simple; ops pays for provisioning and drift.</p>
-      <p><strong>Runtime</strong> enforces boundaries in code and DB policy — every query carries tenant context, RLS rejects cross-tenant reads, middleware injects the ID. Density goes up; one missing filter becomes a security incident.</p>
-      <p>Robust platforms combine them: dedicated stores for enterprise/compliance tenants, runtime isolation for the long tail. That hybrid topology is not fence-sitting — it is how unit economics and enterprise sales coexist.</p>
-      <figure class="diagram">
+      <p><strong>Runtime</strong> enforces boundaries in code and DB policy. Every query carries tenant context, RLS rejects cross-tenant reads, middleware injects the ID. Density goes up; one missing filter becomes a security incident.</p>
+      <p>Solid platforms combine them: dedicated stores for enterprise/compliance tenants, runtime isolation for the long tail. That hybrid is how unit economics and enterprise sales coexist.</p>
+      
+<figure class="diagram">
         <img src="images/control-plane.svg" alt="Shared control plane with pool and silo data planes" loading="lazy" />
       </figure>
+
 
       <h2>Ops: average latency is a lie</h2>
       <p>Single-tenant ops watches CPU and global error rate. Multi-tenant ops adds a second axis: <strong>tenant health</strong>.</p>
       <ul>
-        <li><strong>Activity</strong> — who is hot this hour; seasonality by segment.</li>
-        <li><strong>Consumption</strong> — CPU, storage, query cost attributed per tenant.</li>
-        <li><strong>Cost-per-tenant</strong> — turns infra into pricing and packaging input.</li>
-        <li><strong>Agility</strong> — time to onboard, tier-change, region-move.</li>
+        <li><strong>Activity</strong>: who is hot this hour; seasonality by segment.</li>
+        <li><strong>Consumption</strong>: CPU, storage, query cost attributed per tenant.</li>
+        <li><strong>Cost-per-tenant</strong>: turns infra into pricing and packaging input.</li>
+        <li><strong>Agility</strong>: time to onboard, tier-change, region-move.</li>
       </ul>
-      <p>A platform p95 of 200ms can hide tenant X at 2s. Dashboards and alerts need tenant scope: thresholds that match the customer’s tier, not a global average that dilutes enterprise pain into noise. Cross-tenant correlation (“everyone on shard 7 is slow”) finds systemic faults that look like “one angry customer” in the ticket queue.</p>
+      <p>A platform p95 of 200ms can hide tenant X at 2s. Dashboards and alerts need tenant scope: thresholds that match the customer's tier, not a global average that dilutes enterprise pain into noise. Cross-tenant correlation ("everyone on shard 7 is slow") finds systemic faults that look like "one angry customer" in the ticket queue.</p>
 
       <h2>Tiering that matches how you make money</h2>
-      <p><strong>Consumption-focused</strong> tiers map quotas to usage (API calls, seats, GB). Fair when resource burn correlates with value — analytics, media, collaboration.</p>
+      <p><strong>Consumption-focused</strong> tiers map quotas to usage (API calls, seats, GB). Fair when resource burn correlates with value: analytics, media, collaboration.</p>
       <p><strong>Value-focused</strong> tiers prioritize business importance: enterprise gets latency floors and dedicated support even if their query volume is modest.</p>
       <p><strong>Deployment-focused</strong> tiers encode SLOs in topology: dedicated DB for Premium, pooled for Standard.</p>
-      <p>API throttling should be multi-dimensional, not a single RPM: different budgets for reads vs writes, bulk export vs interactive UI, admin vs end-user. Compute tiering goes beyond CPU requests — priority classes, reserved capacity for premium during peaks, best-effort for free tiers. Storage and backup tiers (hourly RPO vs daily) are the quiet differentiators in enterprise deals.</p>
+      <p>API throttling should be multi-dimensional, not a single RPM: different budgets for reads vs writes, bulk export vs interactive UI, admin vs end-user. Compute tiering goes beyond CPU requests: priority classes, reserved capacity for premium during peaks, best-effort for free tiers. Storage and backup tiers (hourly RPO vs daily) are quiet differentiators in enterprise deals.</p>
 
       <h2>Noisy neighbor: design it out</h2>
-      <p>A noisy neighbor is a tenant whose load becomes everyone else’s latency. Prevention is layered:</p>
-      <figure class="diagram">
+      <p>A noisy neighbor is a tenant whose load becomes everyone else's latency. Prevention is layered:</p>
+      
+<figure class="diagram">
         <img src="images/noisy-neighbor.svg" alt="Noisy neighbor problems and mitigations" loading="lazy" />
       </figure>
+
       <ul>
         <li><strong>CPU/memory limits</strong> with controlled burst into unused capacity.</li>
         <li><strong>I/O QoS</strong> so one analytical scan cannot starve OLTP.</li>
         <li><strong>Connection pools</strong> allocated dynamically by priority, not infinite borrow.</li>
-        <li><strong>Query complexity gates</strong> — reject or defer plans that exceed cost thresholds.</li>
-        <li><strong>Feature throttles</strong> — stricter limits on exports and report generation than on <code>GET /item</code>.</li>
+        <li><strong>Query complexity gates</strong>: reject or defer plans that exceed cost thresholds.</li>
+        <li><strong>Feature throttles</strong>: stricter limits on exports and report generation than on <code>GET /item</code>.</li>
       </ul>
       <p>Bulkheads and rate limits are how you implement these boundaries; tenancy is why those boundaries exist.</p>
 
       <h2>Database patterns that stick</h2>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/db-models.svg" alt="Database-per-tenant, schema-per-tenant, and shared schema models" loading="lazy" />
       </figure>
+
       <p><strong>Shared schema</strong> needs belt and suspenders: Postgres RLS (or equivalent) at the DB layer, mandatory tenant context in the connection/session, and tests that fail CI when a query omits the filter. App-only filtering is one tired engineer away from a breach headline.</p>
-      <p>The practical destination for many B2B platforms is a <strong>mix</strong>: shared schema for high-volume tenant-scoped tables, dedicated databases (or cells) for enterprise and compliance customers. Start simpler if you must — but design the <code>tenant_id</code> and provisioning API so you can silo a customer later without a rewrite.</p>
+      <p>The practical destination for many B2B platforms is a <strong>mix</strong>: shared schema for high-volume tenant-scoped tables, dedicated databases (or cells) for enterprise and compliance customers. Start simpler if you must, but design the <code>tenant_id</code> and provisioning API so you can silo a customer later without a rewrite.</p>
 
       <h2>Tenant lifecycle</h2>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/tenant-lifecycle.svg" alt="Tenant lifecycle from create to offboard with GDPR purge" loading="lazy" />
       </figure>
-      <p>Provisioning should be automated and template-driven: identity, quotas, default roles, empty data plane. Tier changes and region moves are where naive designs bleed — treat them as first-class state transitions with backpressure and verification, not ticket-driven SQL.</p>
-      <p>Offboarding is where multi-tenancy gets honest. Deleting the OLTP row is not enough. Backups, analytics warehouses, search indexes, object storage, and log retention all hold personal data. Build a checklist as code; rehearse it. “We’ll GDPR-delete manually” is not a strategy.</p>
+
+      <p>Provisioning should be automated and template-driven: identity, quotas, default roles, empty data plane. Tier changes and region moves are where naive designs bleed. Treat them as first-class state transitions with backpressure and verification, not ticket-driven SQL.</p>
+      <p>Offboarding is where multi-tenancy gets honest. Deleting the OLTP row is not enough. Backups, analytics warehouses, search indexes, object storage, and log retention all hold personal data. Build a checklist as code; rehearse it. "We'll GDPR-delete manually" is not a strategy.</p>
 
 
       <h2>Cells and progressive isolation</h2>
-      <p>As tenant count grows, many platforms adopt <strong>cells</strong>: a blast-radius unit (region slice or cluster) that hosts a subset of tenants end-to-end. A bad deploy or noisy neighbor affects one cell, not the fleet. Moving a tenant between cells is an explicit migration — which is why the lifecycle state machine matters. Cells also make “elevate this customer to a quieter neighborhood” a concrete ops action tied to revenue.</p>
+      <p>As tenant count grows, many platforms adopt <strong>cells</strong>: a blast-radius unit (region slice or cluster) that hosts a subset of tenants end-to-end. A bad deploy or noisy neighbor affects one cell, not the fleet. Moving a tenant between cells is an explicit migration, which is why the lifecycle state machine matters. Cells also make "elevate this customer to a quieter neighborhood" a concrete ops action tied to revenue.</p>
       <p>Progressive isolation: new signups land in the dense pool; when they cross spend, compliance, or load thresholds, automation (or a playbook) silos their data plane. If your schema and identity model assume a single shared DB forever, that promotion becomes a multi-quarter rewrite. Bake <code>tenant_id</code>, connection routing, and config flags in from day one even if day one is fully pooled.</p>
 
       <h2>Security footguns unique to tenancy</h2>
       <ul>
-        <li>Caches and search indexes that key only on object id — cross-tenant reads on cache hit.</li>
-        <li>Background jobs that iterate “all rows” without tenant context for webhooks or emails.</li>
+        <li>Caches and search indexes that key only on object id: cross-tenant reads on cache hit.</li>
+        <li>Background jobs that iterate "all rows" without tenant context for webhooks or emails.</li>
         <li>Support tooling with break-glass access and no audit trail.</li>
         <li>Test fixtures that reuse IDs across tenants and green CI while prod leaks.</li>
       </ul>
 
       <h2>Key takeaways</h2>
       <ol>
-        <li>Multi-tenancy is the SaaS architecture — packaging, SLOs, and data models follow from isolation choices.</li>
+        <li>Multi-tenancy is the SaaS architecture. Packaging, SLOs, and data models follow from isolation choices.</li>
         <li>Mix full / resource / item isolation deliberately; hybrid pool+silo is normal at scale.</li>
         <li>Operate on tenant health and cost-per-tenant, not only global averages.</li>
         <li>Tier on consumption, value, and deploy shape; throttle on multiple dimensions.</li>
         <li>Noisy-neighbor controls (limits, QoS, pools, query gates, bulk queues) are mandatory shared-infra features.</li>
-        <li>DB-per-tenant, schema-per-tenant, and shared+RLS each fit different segments — plan the mix early.</li>
+        <li>DB-per-tenant, schema-per-tenant, and shared+RLS each fit different segments. Plan the mix early.</li>
         <li>Lifecycle includes tier/region moves and delete-across-derived-data, not just <code>INSERT tenant</code>.</li>
       </ol>
-      <p>Make tenancy invisible to customers and boring for developers. The complexity belongs in the platform — not in every product feature team reinventing <code>WHERE tenant_id = ?</code>.</p>
-
-    </article>
+      <p>Make tenancy invisible to customers and boring for developers. The complexity belongs in the platform, not in every product feature team reinventing <code>WHERE tenant_id = ?</code>.</p>
+</article>
 
         <footer class="site-footer">
       <span>© Alex Razkevich</span>

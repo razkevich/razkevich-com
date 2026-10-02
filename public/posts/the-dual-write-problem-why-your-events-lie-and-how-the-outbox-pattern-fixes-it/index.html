@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>The Dual-Write Problem: Why Your Events Lie — and How the Outbox Pattern Fixes It · Alex Razkevich</title>
-  <meta name="description" content="You cannot atomically write a DB row and publish to a broker without distributed transactions. Dual-write failure modes, outbox + CDC relay, inbox idempotency, and when not to bother." />
+  <title>The Dual-Write Problem: Why Your Events Lie, and How the Outbox Pattern Fixes It · Alex Razkevich</title>
+  <meta name="description" content="You cannot atomically write a DB row and publish to a broker without distributed transactions. Outbox + polling or CDC relay, inbox idempotency, and when not to bother." />
   <meta name="color-scheme" content="light dark" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
@@ -23,25 +23,30 @@
     </header>
 
     <p class="back"><a href="/">← All posts</a></p>
-    <h1 class="page-title">The Dual-Write Problem: Why Your Events Lie — and How the Outbox Pattern Fixes It</h1>
+    <h1 class="page-title">The Dual-Write Problem: Why Your Events Lie, and How the Outbox Pattern Fixes It</h1>
     <p class="meta">March 5, 2026</p>
     <article class="prose">
-      <p>You cannot atomically write a database row and publish to a message broker without distributed transactions — and distributed transactions across a Postgres and a Kafka cluster are the kind of “solution” that creates worse problems than it solves. So teams dual-write. And dual-write failure modes are production-regular, not theoretical.</p>
-      <p>I already covered how Kafka’s transactions deliver exactly-once <em>inside</em> Kafka. This post is the application-level counterpart: how to keep business state and domain events consistent when the database is the source of truth and the broker is downstream. The outbox pattern, a CDC or polling relay, and an inbox on the consumer side.</p>
+      <p>You cannot atomically write a database row and publish to a message broker without distributed transactions, and distributed transactions across Postgres and Kafka usually create worse problems than they solve. So teams dual-write. Dual-write failure modes show up in production; they are not theoretical.</p>
+      <p>I already covered how Kafka's transactions deliver exactly-once <em>inside</em> Kafka. This post is the application-level counterpart: how to keep business state and domain events consistent when the database is the source of truth and the broker is downstream. The outbox pattern, a CDC or polling relay, and an inbox on the consumer side.</p>
 
       <h2>The dual-write that looks fine in code review</h2>
-      <pre><code>def place_order(order_data):
+      
+<pre><code>def place_order(order_data):
     db.insert(orders, order_data)         # Step 1
     broker.publish("OrderPlaced", order)  # Step 2</code></pre>
+
       <p>Four failure modes, all of which show up in real systems:</p>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/dual-write-failures.svg" alt="Dual-write failure cases and outcomes" loading="lazy" />
       </figure>
-      <p>Support tickets from case 1 look like “order stuck.” Tickets from case 2 look like “ghost shipments.” Neither is fixed by “add a retry” unless you also design for duplicates.</p>
+
+      <p>Support tickets from case 1 look like "order stuck." Tickets from case 2 look like "ghost shipments." Neither is fixed by "add a retry" unless you also design for duplicates.</p>
 
       <h2>The outbox: one transaction, two facts</h2>
-      <p>Stop writing to two systems. Write to one — the database — and treat event publishing as part of the data model:</p>
-      <pre><code>BEGIN;
+      <p>Stop writing to two systems. Write to one, the database, and treat event publishing as part of the data model:</p>
+      
+<pre><code>BEGIN;
   INSERT INTO orders (id, customer_id, total, status)
   VALUES (42, 'c-100', 99.99, 'placed');
 
@@ -49,13 +54,17 @@
   VALUES ('OrderPlaced', '42',
           '{"id":42,"customer_id":"c-100","total":99.99}');
 COMMIT;</code></pre>
-      <p>Either both rows commit or neither does. There is no “order without event” and no “event without order.” A separate <strong>relay</strong> reads unpublished outbox rows and publishes to the broker, then marks them published.</p>
-      <figure class="diagram">
+
+      <p>Either both rows commit or neither does. There is no "order without event" and no "event without order." A separate <strong>relay</strong> reads unpublished outbox rows and publishes to the broker, then marks them published.</p>
+      
+<figure class="diagram">
         <img src="images/outbox-architecture.svg" alt="Outbox pattern: atomic DB write then relay to broker" loading="lazy" />
       </figure>
 
+
       <h2>Relay option 1: polling</h2>
-      <pre><code>def relay():
+      
+<pre><code>def relay():
     while True:
         events = db.query(
           "SELECT * FROM outbox "
@@ -66,24 +75,30 @@ COMMIT;</code></pre>
               "UPDATE outbox SET published_at = NOW() WHERE id = ?",
               event.id)
         sleep(poll_interval)</code></pre>
-      <p>Boring, debuggable, portable across databases. Latency equals the poll interval — usually fine when “a few seconds late” is within the business SLO. Too-aggressive polling taxes the DB; too-slow polling delays downstream. Start at 1–5 seconds and measure lag as a metric, not a hope.</p>
+
+      <p>Boring, debuggable, portable across databases. Latency equals the poll interval, which is usually fine when "a few seconds late" is within the business SLO. Too-aggressive polling taxes the DB; too-slow polling delays downstream. Start at 1-5 seconds and measure lag as a metric.</p>
 
       <h2>Relay option 2: CDC (Debezium et al.)</h2>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/cdc-pipeline.svg" alt="CDC pipeline from Postgres outbox to Kafka via Debezium" loading="lazy" />
       </figure>
+
       <p>Change Data Capture tails the WAL (or binlog / change stream) and streams inserts into the outbox topic with sub-second latency and no polling load. The cost is operational: replication slots, connector health, schema evolution, and another distributed system in the critical path.</p>
-      <figure class="diagram">
+      
+<figure class="diagram">
         <img src="images/poll-vs-cdc.svg" alt="Polling relay vs CDC relay comparison" loading="lazy" />
       </figure>
-      <p>Prefer polling until throughput or latency SLOs force CDC. Don’t start with Debezium because it looks more “senior” in a design review.</p>
+
+      <p>Prefer polling until throughput or latency SLOs force CDC. Do not start with Debezium because it looks more impressive in a design review.</p>
 
       <h2>Semantics: at-least-once, so consumers must be idempotent</h2>
-      <p>The relay can publish successfully and crash before setting <code>published_at</code>. On restart it publishes again. Outbox ⇒ <strong>at-least-once</strong>. Exactly-once end-to-end is a property you assemble: at-least-once from the outbox <em>plus</em> idempotent consumers — not a checkbox on the broker alone.</p>
-      <p>(Kafka transactions help when both sides of a processing step live inside Kafka. The moment you touch an external database as the system of record, you’re back to outbox/inbox territory.)</p>
+      <p>The relay can publish successfully and crash before setting <code>published_at</code>. On restart it publishes again. Outbox means <strong>at-least-once</strong>. Exactly-once end-to-end is something you assemble: at-least-once from the outbox <em>plus</em> idempotent consumers. It is not a checkbox on the broker alone.</p>
+      <p>(Kafka transactions help when both sides of a processing step live inside Kafka. The moment you touch an external database as the system of record, you are back to outbox/inbox territory.)</p>
 
-      <h2>Schema that doesn’t fall over</h2>
-      <pre><code>CREATE TABLE outbox (
+      <h2>Schema that does not fall over</h2>
+      
+<pre><code>CREATE TABLE outbox (
   id             BIGSERIAL PRIMARY KEY,
   event_type     VARCHAR(255) NOT NULL,
   aggregate_id   VARCHAR(255) NOT NULL,
@@ -96,17 +111,19 @@ COMMIT;</code></pre>
 
 CREATE INDEX idx_outbox_unpublished
   ON outbox (id) WHERE published_at IS NULL;</code></pre>
-      <p>The partial index keeps “find unpublished” cheap as the table grows. Without cleanup, it grows forever:</p>
+
+      <p>The partial index keeps "find unpublished" cheap as the table grows. Without cleanup, it grows forever:</p>
       <ul>
-        <li><strong>Delete after publish</strong> — smallest table, no audit trail.</li>
-        <li><strong>Archive</strong> — move to cold storage / archive table; keep forensics.</li>
-        <li><strong>TTL</strong> — retain N days, then delete; middle ground.</li>
+        <li><strong>Delete after publish</strong>: smallest table, no audit trail.</li>
+        <li><strong>Archive</strong>: move to cold storage / archive table; keep forensics.</li>
+        <li><strong>TTL</strong>: retain N days, then delete; middle ground.</li>
       </ul>
       <p>Plan cleanup before the on-call page about disk, not after.</p>
 
       <h2>The inbox: consumer-side dedupe</h2>
-      <p>Idempotency needs a durable gate, not a comment that says “make sure this is safe.”</p>
-      <pre><code>CREATE TABLE inbox (
+      <p>Idempotency needs a durable gate, not a comment that says "make sure this is safe."</p>
+      
+<pre><code>CREATE TABLE inbox (
   message_id  VARCHAR(255) PRIMARY KEY,
   consumed_at TIMESTAMPTZ NOT NULL
 );
@@ -120,30 +137,33 @@ def handle_event(event):
             apply_business_logic(event)
     except UniqueConstraintViolation:
         pass  # already processed</code></pre>
-      <p>Insert into <code>inbox</code> and apply business logic in the <em>same</em> transaction. If the process dies after applying logic but before committing, the inbox row isn’t there either — safe retry. If the message is a duplicate, the unique constraint rejects it and you skip. Outbox + inbox is the reliability loop:</p>
-      <figure class="diagram">
+
+      <p>Insert into <code>inbox</code> and apply business logic in the <em>same</em> transaction. If the process dies after applying logic but before committing, the inbox row is not there either, so retry is safe. If the message is a duplicate, the unique constraint rejects it and you skip. Outbox + inbox is the reliability loop:</p>
+      
+<figure class="diagram">
         <img src="images/end-to-end-atomic.svg" alt="End-to-end atomicity with outbox and inbox" loading="lazy" />
       </figure>
 
+
       <h2>Ordering, errors, and the unglamorous rest</h2>
-      <p>Insert order ≠ delivery order once you have parallel relays or partitioned topics. If order matters for an aggregate, include a sequence number or process per <code>aggregate_id</code> partition key and keep consumers ordered within that key.</p>
-      <p>When the broker is down, events accumulate in the outbox — that’s a feature. When serialization fails or a poison payload loops, you need a dead-letter path and metrics on <code>outbox_lag</code> / oldest unpublished age. A relay without alerting is a silent backlog.</p>
+      <p>Insert order is not delivery order once you have parallel relays or partitioned topics. If order matters for an aggregate, include a sequence number or process per <code>aggregate_id</code> partition key and keep consumers ordered within that key.</p>
+      <p>When the broker is down, events accumulate in the outbox. That is a feature. When serialization fails or a poison payload loops, you need a dead-letter path and metrics on <code>outbox_lag</code> / oldest unpublished age. A relay without alerting is a silent backlog.</p>
 
       <h2>When to use it / when not to</h2>
-      <p><strong>Use outbox when</strong> a state change must reliably trigger downstream work: order → fulfillment, ledger postings, saga steps, controlled read-model updates (prefer explicit events over “CDC every table”).</p>
-      <p><strong>Skip it for</strong> best-effort notifications, sampled metrics, and pure event-sourced stores where the event log <em>is</em> the state — there’s nothing to dual-write.</p>
+      <p><strong>Use outbox when</strong> a state change must reliably trigger downstream work: order → fulfillment, ledger postings, saga steps, controlled read-model updates (prefer explicit events over "CDC every table").</p>
+      <p><strong>Skip it for</strong> best-effort notifications, sampled metrics, and pure event-sourced stores where the event log <em>is</em> the state. There is nothing to dual-write.</p>
 
 
-      <h2>Outbox vs “just use Kafka transactions”</h2>
-      <p>Kafka’s transactional producer can atomically commit offsets and output records <em>within Kafka</em>. That shines for stream processors that never leave the log. The moment step one is <code>UPDATE accounts</code> in Postgres and step two is <code>publish</code>, Kafka transactions do not cover the database. You either adopt the outbox (DB as truth) or accept dual-write risk. Teams sometimes bolt “idempotent producer” onto a dual-write and call it done — that only dedupes the broker side; it does not resurrect the missing DB row or the missing event.</p>
+      <h2>Outbox vs "just use Kafka transactions"</h2>
+      <p>Kafka's transactional producer can atomically commit offsets and output records <em>within Kafka</em>. That shines for stream processors that never leave the log. The moment step one is <code>UPDATE accounts</code> in Postgres and step two is <code>publish</code>, Kafka transactions do not cover the database. You either adopt the outbox (DB as truth) or accept dual-write risk. Teams sometimes bolt "idempotent producer" onto a dual-write and call it done. That only dedupes the broker side; it does not resurrect the missing DB row or the missing event.</p>
 
       <h2>Minimal production checklist</h2>
       <ul>
-        <li>Outbox write in the same transaction as the state change — enforced by code review and an integration test that crashes between the two inserts (should be impossible).</li>
-        <li>Relay with leases or <code>FOR UPDATE SKIP LOCKED</code> so multiple workers don’t double-claim without a plan.</li>
+        <li>Outbox write in the same transaction as the state change, enforced by code review and an integration test that crashes between the two inserts (should be impossible).</li>
+        <li>Relay with leases or <code>FOR UPDATE SKIP LOCKED</code> so multiple workers do not double-claim without a plan.</li>
         <li>Metrics: unpublished count, oldest unpublished age, publish error rate, relay lag.</li>
         <li>Inbox (or equivalent) on every consumer that mutates money, inventory, or entitlements.</li>
-        <li>Runbook: broker outage → outbox backlog drains; DB outage → no silent “events only” path.</li>
+        <li>Runbook: broker outage → outbox backlog drains; DB outage → no silent "events only" path.</li>
       </ul>
 
       <h2>Key takeaways</h2>
@@ -153,11 +173,10 @@ def handle_event(event):
         <li>Polling relays are enough at modest scale; CDC when latency/throughput demand it.</li>
         <li>Outbox gives at-least-once; pair with inbox (or equivalent idempotency) for practical exactly-once effects.</li>
         <li>Partial indexes and cleanup keep the outbox operable; lag metrics keep it honest.</li>
-        <li>Reserve the pattern for state changes that must fan out — not for every log line.</li>
+        <li>Reserve the pattern for state changes that must fan out, not for every log line.</li>
       </ol>
-      <p>The outbox isn’t elegant. It’s proven, understandable, and reliable — the qualities that matter more than elegance once money and fulfillment are on the line.</p>
-
-    </article>
+      <p>The outbox is not elegant. It is proven, understandable, and reliable, which matters more than elegance once money and fulfillment are on the line.</p>
+</article>
 
         <footer class="site-footer">
       <span>© Alex Razkevich</span>
