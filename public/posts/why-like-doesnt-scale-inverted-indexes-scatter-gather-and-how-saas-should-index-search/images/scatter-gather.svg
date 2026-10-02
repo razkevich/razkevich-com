@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="220" viewBox="0 0 560 220" role="img">
+  <rect width="560" height="220" fill="#fafaf9" rx="8"/>
+  <rect x="20" y="90" width="80" height="40" rx="8" fill="#ffffff" stroke="#e7e5e4" stroke-width="1.25"/><text x="60.0" y="114.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="middle">client</text>
+<line x1="100" y1="110" x2="143.0" y2="110.0" stroke="#0f766e" stroke-width="1.75"/><polygon points="150,110 143.0,114.0 143.0,106.0" fill="#0f766e"/>
+<rect x="150" y="80" width="90" height="60" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.25"/><text x="195.0" y="114.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="600" fill="#0f766e" text-anchor="middle">coord</text>
+<line x1="240" y1="110" x2="285.51870920234865" y2="55.37754895718163" stroke="#78716c" stroke-width="1.75"/><polygon points="290,50 288.5915943207381,57.938286555839554 282.44582408395917,52.81681135852371" fill="#78716c"/>
+<rect x="290" y="30" width="100" height="40" rx="8" fill="#ffffff" stroke="#e7e5e4" stroke-width="1.25"/><text x="340.0" y="54.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="middle">shard 0</text>
+<line x1="390" y1="50" x2="426.1170986264234" y2="104.1756479396351" stroke="#78716c" stroke-width="1.75"/><polygon points="430,110 422.788897449072,106.39444872453602 429.4452998037748,101.95684715473418" fill="#78716c"/>
+<line x1="240" y1="110" x2="283.0" y2="110.0" stroke="#78716c" stroke-width="1.75"/><polygon points="290,110 283.0,114.0 283.0,106.0" fill="#78716c"/>
+<rect x="290" y="90" width="100" height="40" rx="8" fill="#ffffff" stroke="#e7e5e4" stroke-width="1.25"/><text x="340.0" y="114.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="middle">shard 1</text>
+<line x1="390" y1="110" x2="423.0" y2="110.0" stroke="#78716c" stroke-width="1.75"/><polygon points="430,110 423.0,114.0 423.0,106.0" fill="#78716c"/>
+<line x1="240" y1="110" x2="285.51870920234865" y2="164.62245104281837" stroke="#78716c" stroke-width="1.75"/><polygon points="290,170 282.44582408395917,167.18318864147628 288.5915943207381,162.06171344416046" fill="#78716c"/>
+<rect x="290" y="150" width="100" height="40" rx="8" fill="#ffffff" stroke="#e7e5e4" stroke-width="1.25"/><text x="340.0" y="174.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="middle">shard 2</text>
+<line x1="390" y1="170" x2="426.1170986264234" y2="115.8243520603649" stroke="#78716c" stroke-width="1.75"/><polygon points="430,110 429.4452998037748,118.04315284526582 422.788897449072,113.60555127546398" fill="#78716c"/>
+<rect x="430" y="80" width="110" height="60" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.25"/><text x="485.0" y="114.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#0f766e" text-anchor="middle">merge top-k</text>
+<text x="280" y="205" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#78716c" text-anchor="middle">latency ≈ slowest shard + merge</text>
+</svg>

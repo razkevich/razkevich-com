@@ -37,13 +37,9 @@
         <li><strong>Partition tolerance (P)</strong> — the system continues to operate despite network failures that split nodes into isolated groups.</li>
       </ul>
       <p>Network partitions are not a rare academic event. Links flap, AZs degrade, GC pauses look like death, DNS lies. In practice you assume P is required. The real choice under a partition is <strong>CP</strong> or <strong>AP</strong>.</p>
-      <pre><code>          Consistency
-               /\
-              /  \
-             /    \
-            /  CAP \     ← only binds when partitioned
-           /________\
-    Availability    Partition tolerance</code></pre>
+      <figure class="diagram">
+        <img src="images/cap-triangle.svg" alt="CAP triangle: Consistency, Availability, Partition tolerance" loading="lazy" />
+      </figure>
       <p>Important: CAP “consistency” is not ACID’s C (constraints). Confusing them produces meetings that go nowhere. CAP C is about replica agreement under concurrent operations; ACID C is about invariants inside a transaction.</p>
 
       <h2>CP vs AP in production language</h2>
@@ -53,11 +49,9 @@
 
       <h2>The consistency spectrum (pick per operation)</h2>
       <p>Linearizability is the top of a ladder. Production systems climb down deliberately:</p>
-      <pre><code>linearizable          single global order; read always sees latest write
-  → sequential        each client’s ops in order; global order exists
-    → causal          cause-before-effect preserved; concurrent may diverge
-      → read-your-writes / monotonic reads   session guarantees
-        → eventual    replicas converge; temporary divergence OK</code></pre>
+      <figure class="diagram">
+        <img src="images/consistency-spectrum.svg" alt="Consistency spectrum from linearizable to eventual" loading="lazy" />
+      </figure>
       <p>Most mature SaaS codebases do <strong>not</strong> pick one rung for the whole system. Payments and auth use strong guarantees. Search indexing, analytics rollups, and “users also bought” tolerate eventual. The architecture doc should list <em>operations</em>, not a single CAP letter.</p>
 
       <h2>PACELC: the rest of the time</h2>
@@ -65,28 +59,20 @@
       <blockquote>
         <p><strong>If Partition → Availability vs Consistency. Else → Latency vs Consistency.</strong></p>
       </blockquote>
-      <pre><code>                 Partition?
-                /          \
-              yes           no (Else)
-              /              \
-         A vs C            L vs C
-     (classic CAP)    (everyday trade-off)</code></pre>
+      <figure class="diagram">
+        <img src="images/pacelc-tree.svg" alt="PACELC decision tree: partition then A vs C, else L vs C" loading="lazy" />
+      </figure>
       <p>Why latency vs consistency even when the network is fine? Because resilience requires replicas — often across AZs or regions. Strong consistency waits for synchronous replication acknowledgements. Asynchronous replication returns fast and converges later.</p>
       <p>Three replicas, synchronous credit of $100:</p>
-      <pre><code>1. write primary
-2. replicate to secondaries
-3. wait for all (or quorum) acks
-4. then acknowledge the client</code></pre>
+      <figure class="diagram">
+        <img src="images/sync-replication.svg" alt="Steps of synchronous replication before client ack" loading="lazy" />
+      </figure>
       <p>Latency grows with replica count and RTT. Skip the wait and you have eventual consistency — PACELC’s EL (prefer latency) rather than EC (prefer consistency).</p>
 
       <h2>How common systems land on the map</h2>
-      <pre><code>System      CAP    PACELC    Notes
-──────────  ─────  ────────  ─────────────────────────────────────
-Cassandra   AP     PA/EL     Tunable; defaults favor avail + latency
-DynamoDB    AP     PA/EL     Eventually consistent reads by default
-MongoDB     CP*    PC/EC     Default primary reads; tunable
-HBase       CP     PC/EC     Strong consistency, latency cost
-Spanner     CP     PC/EC     TrueTime makes global CP feasible</code></pre>
+      <figure class="diagram">
+        <img src="images/systems-pacelc.svg" alt="CAP and PACELC classification of popular systems" loading="lazy" />
+      </figure>
       <p>The asterisk on MongoDB matters: defaults are not destiny. Quorum and read/write concern knobs move you along the spectrum per call.</p>
 
       <h2>Navigation patterns that actually ship</h2>
@@ -95,13 +81,9 @@ Spanner     CP     PC/EC     TrueTime makes global CP feasible</code></pre>
       <p><strong>Strong only when needed.</strong> A useful planning heuristic: ~20% of operations genuinely need CP (payments, auth, ledger, entitlement checks); ~80% are happier on AP/EL. Measure which bucket an endpoint is in before you pay Spanner prices for a feed query.</p>
 
       <h2>Multi-tenant SaaS lens</h2>
-      <pre><code>                    Strong (CP/EC)          Eventual (AP/EL)
-Payment / auth      ████████████            ░░░░░░░░░░
-Ledger / inventory  ████████████            ░░░░░░░░░░
-Tenant admin UI     ████████░░░░            ████░░░░░░
-Product feed        ██░░░░░░░░              ████████████
-Search / analytics  █░░░░░░░░░              ████████████
-Cross-tenant BI     ░░░░░░░░░░              ████████████</code></pre>
+      <figure class="diagram">
+        <img src="images/saas-consistency-lens.svg" alt="Which SaaS workloads prefer strong vs eventual consistency" loading="lazy" />
+      </figure>
       <p>Within a tenant, the domain is often small enough that strong consistency is cheap — especially with DB-per-tenant. Cross-tenant aggregates (billing rollups, platform analytics) almost always accept eventual. Shared-schema multi-tenancy makes CP harder: one hot tenant’s quorum traffic shares fate with everyone else. Isolation model and consistency model are coupled decisions.</p>
 
       <h2>What to tattoo on the architecture doc</h2>

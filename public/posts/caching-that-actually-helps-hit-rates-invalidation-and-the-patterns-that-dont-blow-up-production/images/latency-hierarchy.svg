@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="122" viewBox="0 0 680 122" role="img">
+  <rect width="680" height="122" fill="#fafaf9" rx="8"/>
+  <rect x="20" y="24" width="95" height="48" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.25"/><text x="67.5" y="52.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#0f766e" text-anchor="middle">register</text>
+<text x="67.5" y="86" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="500" fill="#78716c" text-anchor="middle">~1ns</text>
+<line x1="117" y1="48.0" x2="120.0" y2="48.0" stroke="#0f766e" stroke-width="1.75"/><polygon points="127,48.0 120.0,52.0 120.0,44.0" fill="#0f766e"/>
+<rect x="129" y="24" width="95" height="48" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.25"/><text x="176.5" y="52.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#0f766e" text-anchor="middle">L1/L2/L3</text>
+<text x="176.5" y="86" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="500" fill="#78716c" text-anchor="middle">~1–20ns</text>
+<line x1="226" y1="48.0" x2="229.0" y2="48.0" stroke="#0f766e" stroke-width="1.75"/><polygon points="236,48.0 229.0,52.0 229.0,44.0" fill="#0f766e"/>
+<rect x="238" y="24" width="95" height="48" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.25"/><text x="285.5" y="52.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#0f766e" text-anchor="middle">RAM</text>
+<text x="285.5" y="86" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="500" fill="#78716c" text-anchor="middle">~100ns</text>
+<line x1="335" y1="48.0" x2="338.0" y2="48.0" stroke="#0f766e" stroke-width="1.75"/><polygon points="345,48.0 338.0,52.0 338.0,44.0" fill="#0f766e"/>
+<rect x="347" y="24" width="95" height="48" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.25"/><text x="394.5" y="52.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#0f766e" text-anchor="middle">SSD</text>
+<text x="394.5" y="86" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="500" fill="#78716c" text-anchor="middle">~100µs</text>
+<line x1="444" y1="48.0" x2="447.0" y2="48.0" stroke="#0f766e" stroke-width="1.75"/><polygon points="454,48.0 447.0,52.0 447.0,44.0" fill="#0f766e"/>
+<rect x="456" y="24" width="95" height="48" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.25"/><text x="503.5" y="52.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#0f766e" text-anchor="middle">intra-DC</text>
+<text x="503.5" y="86" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="500" fill="#78716c" text-anchor="middle">~0.5–2ms</text>
+<line x1="553" y1="48.0" x2="556.0" y2="48.0" stroke="#0f766e" stroke-width="1.75"/><polygon points="563,48.0 556.0,52.0 556.0,44.0" fill="#0f766e"/>
+<rect x="565" y="24" width="95" height="48" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.25"/><text x="612.5" y="52.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#0f766e" text-anchor="middle">cross-region</text>
+<text x="612.5" y="86" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="500" fill="#78716c" text-anchor="middle">~50–150ms</text>
+</svg>

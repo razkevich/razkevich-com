@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="550" height="308" viewBox="0 0 550 308" role="img">
+  <rect width="550" height="308" fill="#fafaf9" rx="8"/>
+  <text x="16" y="26" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#1c1917" text-anchor="start">Multi-tenant SaaS consistency lens</text>
+<text x="246.0" y="56" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="700" fill="#78716c" text-anchor="middle">Strong (CP/EC)</text>
+<text x="434.0" y="56" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="700" fill="#78716c" text-anchor="middle">Eventual (AP/EL)</text>
+<text x="158" y="90.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="end">Payment / auth</text>
+<rect x="166" y="76" width="160" height="20" rx="4" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="354" y="76" width="160" height="20" rx="4" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="166" y="76" width="160.0" height="20" rx="4" fill="#0f766e" stroke="none" stroke-width="0"/>
+<rect x="354" y="76" width="24.0" height="20" rx="4" fill="#5eead4" stroke="none" stroke-width="0"/>
+<text x="158" y="126.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="end">Ledger / inventory</text>
+<rect x="166" y="112" width="160" height="20" rx="4" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="354" y="112" width="160" height="20" rx="4" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="166" y="112" width="160.0" height="20" rx="4" fill="#0f766e" stroke="none" stroke-width="0"/>
+<rect x="354" y="112" width="24.0" height="20" rx="4" fill="#5eead4" stroke="none" stroke-width="0"/>
+<text x="158" y="162.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="end">Tenant admin UI</text>
+<rect x="166" y="148" width="160" height="20" rx="4" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="354" y="148" width="160" height="20" rx="4" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="166" y="148" width="112.0" height="20" rx="4" fill="#0f766e" stroke="none" stroke-width="0"/>
+<rect x="354" y="148" width="64.0" height="20" rx="4" fill="#5eead4" stroke="none" stroke-width="0"/>
+<text x="158" y="198.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="end">Product feed</text>
+<rect x="166" y="184" width="160" height="20" rx="4" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="354" y="184" width="160" height="20" rx="4" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="166" y="184" width="40.0" height="20" rx="4" fill="#0f766e" stroke="none" stroke-width="0"/>
+<rect x="354" y="184" width="160.0" height="20" rx="4" fill="#5eead4" stroke="none" stroke-width="0"/>
+<text x="158" y="234.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="end">Search / analytics</text>
+<rect x="166" y="220" width="160" height="20" rx="4" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="354" y="220" width="160" height="20" rx="4" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="166" y="220" width="19.2" height="20" rx="4" fill="#0f766e" stroke="none" stroke-width="0"/>
+<rect x="354" y="220" width="160.0" height="20" rx="4" fill="#5eead4" stroke="none" stroke-width="0"/>
+<text x="158" y="270.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="end">Cross-tenant BI</text>
+<rect x="166" y="256" width="160" height="20" rx="4" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="354" y="256" width="160" height="20" rx="4" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="166" y="256" width="8.0" height="20" rx="4" fill="#0f766e" stroke="none" stroke-width="0"/>
+<rect x="354" y="256" width="160.0" height="20" rx="4" fill="#5eead4" stroke="none" stroke-width="0"/>
+</svg>

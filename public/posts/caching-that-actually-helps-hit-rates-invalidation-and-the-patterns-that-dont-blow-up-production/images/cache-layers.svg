@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="314" viewBox="0 0 560 314" role="img">
+  <rect width="560" height="314" fill="#fafaf9" rx="8"/>
+  <text x="20" y="30" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#1c1917" text-anchor="start">Cache layers</text>
+<rect x="20" y="46" width="520" height="40" rx="8" fill="#ffffff" stroke="#e7e5e4" stroke-width="1.25"/>
+<text x="34" y="71.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="start">Client (Cache-Control / ETag / 304)</text>
+<line x1="28" y1="87" x2="28.0" y2="88.0" stroke="#78716c" stroke-width="1.25"/><polygon points="28,95 24.0,88.0 32.0,88.0" fill="#78716c"/>
+<rect x="34" y="96" width="506" height="40" rx="8" fill="#ffffff" stroke="#e7e5e4" stroke-width="1.25"/>
+<text x="48" y="121.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="start">CDN (edge pull or push)</text>
+<line x1="42" y1="137" x2="42.0" y2="138.0" stroke="#78716c" stroke-width="1.25"/><polygon points="42,145 38.0,138.0 46.0,138.0" fill="#78716c"/>
+<rect x="48" y="146" width="492" height="40" rx="8" fill="#ffffff" stroke="#e7e5e4" stroke-width="1.25"/>
+<text x="62" y="171.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="start">Reverse proxy (Nginx/Varnish response cache)</text>
+<line x1="56" y1="187" x2="56.0" y2="188.0" stroke="#78716c" stroke-width="1.25"/><polygon points="56,195 52.0,188.0 60.0,188.0" fill="#78716c"/>
+<rect x="62" y="196" width="478" height="40" rx="8" fill="#ffffff" stroke="#e7e5e4" stroke-width="1.25"/>
+<text x="76" y="221.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="start">App (in-process Map/Guava + Redis/Memcached)</text>
+<line x1="70" y1="237" x2="70.0" y2="238.0" stroke="#78716c" stroke-width="1.25"/><polygon points="70,245 66.0,238.0 74.0,238.0" fill="#78716c"/>
+<rect x="76" y="246" width="464" height="40" rx="8" fill="#ffffff" stroke="#e7e5e4" stroke-width="1.25"/>
+<text x="90" y="271.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="start">DB (buffer pool / query plan / object caches)</text>
+</svg>

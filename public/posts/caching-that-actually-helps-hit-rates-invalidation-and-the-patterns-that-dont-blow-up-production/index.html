@@ -44,43 +44,38 @@ CacheMissRate            &lt;  0.8</code></pre>
 
       <h2>Latency hierarchy (why a hit still matters)</h2>
       <p>When a cache hit replaces a network hop, the win is often orders of magnitude — not a few percent:</p>
-      <pre><code>register  →  L1/L2/L3  →  RAM  →  SSD  →  intra-DC RTT  →  cross-region
- ~1ns         ~1–20ns      ~100ns  ~100µs   ~0.5–2ms         ~50–150ms</code></pre>
+      <figure class="diagram">
+        <img src="images/latency-hierarchy.svg" alt="Latency hierarchy from register to cross-region" loading="lazy" />
+      </figure>
       <p>An in-process hit that avoids Redis is cheap. A Redis hit that avoids Postgres is usually worth it. A Redis miss that still hits Postgres is the case the formula above is warning you about.</p>
 
       <h2>The layer stack</h2>
       <p>Modern apps don’t have “a cache.” They have a stack where each layer shields the next:</p>
-      <pre><code>Client (Cache-Control / ETag / 304)
-  → CDN (edge pull or push)
-    → Reverse proxy (Nginx/Varnish response cache)
-      → App (in-process Map/Guava + Redis/Memcached)
-        → DB (buffer pool / query plan / object caches)</code></pre>
+      <figure class="diagram">
+        <img src="images/cache-layers.svg" alt="Cache layers from client to database" loading="lazy" />
+      </figure>
       <p><strong>Client.</strong> Browsers honor <code>Cache-Control</code>, <code>ETag</code>, and <code>Last-Modified</code>. <code>max-age=3600</code> caches for an hour; <code>no-cache</code> stores but revalidates; <code>no-store</code> skips caching. Conditional requests return <code>304 Not Modified</code> without a body when the content is unchanged.</p>
       <p><strong>CDN.</strong> Edge nodes serve static (and sometimes API) content near the user. Pull CDN fetches from origin on first miss; Push CDN uploads ahead of traffic (releases, large media). Keep this layer short here — the networking post already covers CDN as infrastructure.</p>
-      <pre><code>                Pull CDN              Push CDN
-Load            auto from origin      manual / CI
-First access    slow if cold          already warm
-Ops             simple                more control
-Best for        sites, APIs, PWAs     video, large artifacts</code></pre>
+      <figure class="diagram">
+        <img src="images/pull-vs-push-cdn.svg" alt="Comparison of pull CDN vs push CDN" loading="lazy" />
+      </figure>
       <p><strong>Reverse proxy.</strong> Nginx in front of <code>/products/123</code> can serve a cached HTML/JSON response without waking the app. Good for mostly-static pages and long-TTL API responses; pair with <code>stale-while-revalidate</code> when you can.</p>
       <p><strong>Application.</strong> In-process maps for hot, tiny working sets; Redis/Memcached for shared state across pods. The app owns key design, TTL, and invalidation — this is where most SaaS footguns live.</p>
       <p><strong>Database.</strong> Buffer pools and plan caches are already there. Application-level query-result and object caches sit on top when the same rows or aggregates are hit repeatedly.</p>
 
       <h2>Read-intensive patterns</h2>
       <p><strong>Cache-aside (lazy loading).</strong> The application owns the cache. Read path:</p>
-      <pre><code>GET key
-  → HIT  → return
-  → MISS → load DB → SET key → return</code></pre>
+      <figure class="diagram">
+        <img src="images/cache-aside.svg" alt="Cache-aside flow: HIT returns, MISS loads DB then SETs" loading="lazy" />
+      </figure>
       <p>Simple, flexible, and the default for most services. Cost: first request after expiry is always a miss, and the app must own invalidation on writes.</p>
       <p><strong>Read-through.</strong> The app always talks to the cache; the cache library loads from the store on miss. Cleaner call sites, less control over population policy.</p>
       <p><strong>Refresh-ahead.</strong> Predict hot keys and refresh before TTL expires so users rarely see a miss. Useful for CDNs, trading boards, and anything with predictable peaks — wasteful if your predictor is wrong.</p>
 
       <h2>Write-intensive patterns</h2>
-      <pre><code>Pattern        Write path                     Consistency     Risk
-─────────────  ─────────────────────────────  ──────────────  ──────────────────
-Write-through  cache + store synchronously    strong          slower writes
-Write-around   store only; cache on read      eventual        first read = miss
-Write-back     cache now; store async         eventual        durability if crash</code></pre>
+      <figure class="diagram">
+        <img src="images/write-patterns.svg" alt="Write-through, write-around, and write-back comparison" loading="lazy" />
+      </figure>
       <p><strong>Write-through</strong> keeps cache and store aligned; use it when wrong data is worse than slow writes (ledgers, inventory that must not lie).</p>
       <p><strong>Write-around</strong> avoids polluting the cache with write-once keys (logs, bulk imports). The next read pays a miss — acceptable when re-reads are rare.</p>
       <p><strong>Write-back / write-behind</strong> is the speed play: acknowledge after cache write, flush later. You traded durability. Fine for counters and ephemeral buffers; not fine for money.</p>
@@ -92,18 +87,16 @@ Write-back     cache now; store async         eventual        durability if cras
 
       <h2>Invalidation beyond TTL</h2>
       <p>TTL-only is fine until a product price must change in seconds. Then you need explicit delete/refresh, or better: <strong>event-driven invalidation</strong>.</p>
-      <pre><code>DB write → outbox / CDC → Kafka → cache subscribers
-                                  (DELETE product:42, or REFRESH)</code></pre>
+      <figure class="diagram">
+        <img src="images/invalidation-pipeline.svg" alt="Cache invalidation via outbox/CDC and Kafka" loading="lazy" />
+      </figure>
       <p>Delete (evict) forces a miss on next read. Refresh writes the new value immediately when you already have it. Tagging and versioning scale invalidation: tag keys with <code>product:456</code> and drop the whole tag when that product changes; bump a version prefix (<code>v3:user:42</code>) when a release or schema change must nuke a generation of entries.</p>
 
       <h2>Stampede (thundering herd)</h2>
       <p>One hot key expires. N concurrent requests all miss. All N hit the database for the same row. Latency cliffs; DB CPU spikes; sometimes the cascade continues.</p>
-      <pre><code>t0  key expires
-t1  client₁ MISS → load DB
-    client₂ MISS → load DB
-    …
-    clientₙ MISS → load DB
-t2  N identical SETs race into Redis</code></pre>
+      <figure class="diagram">
+        <img src="images/cache-stampede.svg" alt="Cache stampede timeline when a key expires" loading="lazy" />
+      </figure>
       <p>Mitigations that work in production:</p>
       <ul>
         <li><strong>Single-flight / lock:</strong> only one loader proceeds; others wait or subscribe for the fill.</li>

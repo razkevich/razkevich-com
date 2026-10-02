@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="220" viewBox="0 0 560 220" role="img">
+  <rect width="560" height="220" fill="#fafaf9" rx="8"/>
+  <rect x="20" y="90" width="80" height="40" rx="8" fill="#ffffff" stroke="#0f766e" stroke-width="1.25"/><text x="60.0" y="114.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c1917" text-anchor="middle">query</text>
+<line x1="100" y1="100" x2="154.62245104281837" y2="54.48129079765136" stroke="#78716c" stroke-width="1.75"/><polygon points="160,50 157.18318864147628,57.55417591604086 152.06171344416046,51.40840567926186" fill="#78716c"/>
+<line x1="100" y1="120" x2="154.1756479396351" y2="156.1170986264234" stroke="#78716c" stroke-width="1.75"/><polygon points="160,160 151.9568471547342,159.4452998037748 156.394448724536,152.788897449072" fill="#78716c"/>
+<rect x="170" y="30" width="150" height="40" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.25"/><text x="245.0" y="54.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#0f766e" text-anchor="middle">BM25 top-k</text>
+<rect x="170" y="140" width="150" height="40" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.25"/><text x="245.0" y="164.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#0f766e" text-anchor="middle">vector ANN top-k</text>
+<line x1="320" y1="50" x2="374.6224510428184" y2="95.51870920234865" stroke="#78716c" stroke-width="1.75"/><polygon points="380,100 372.0617134441605,98.59159432073815 377.1831886414763,92.44582408395914" fill="#78716c"/>
+<line x1="320" y1="160" x2="374.1756479396351" y2="123.8829013735766" stroke="#78716c" stroke-width="1.75"/><polygon points="380,120 376.394448724536,127.21110255092798 371.9568471547342,120.55470019622523" fill="#78716c"/>
+<rect x="390" y="80" width="140" height="56" rx="8" fill="#ffffff" stroke="#e7e5e4" stroke-width="1.25"/><text x="460.0" y="112.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="600" fill="#1c1917" text-anchor="middle">merge / re-rank</text>
+<text x="280" y="205" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#78716c" text-anchor="middle">filters: tenant, ACL, stock</text>
+</svg>

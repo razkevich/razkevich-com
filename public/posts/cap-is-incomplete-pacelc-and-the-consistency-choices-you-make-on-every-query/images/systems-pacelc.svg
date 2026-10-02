@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="582" height="260" viewBox="0 0 582 260" role="img">
+  <rect width="582" height="260" fill="#fafaf9" rx="8"/>
+  <text x="16" y="26" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#1c1917" text-anchor="start">Where popular systems sit</text>
+<rect x="16" y="42" width="550" height="194" rx="6" fill="none" stroke="#e7e5e4" stroke-width="1"/>
+<rect x="16" y="42" width="550" height="34" rx="6" fill="#f5f5f4" stroke="#e7e5e4" stroke-width="1"/>
+<text x="26" y="64.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="700" fill="#78716c" text-anchor="start">System</text>
+<text x="136" y="64.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="700" fill="#78716c" text-anchor="start">CAP</text>
+<text x="196" y="64.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="700" fill="#78716c" text-anchor="start">PACELC</text>
+<text x="276" y="64.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="700" fill="#78716c" text-anchor="start">Notes</text>
+<line x1="16" y1="108" x2="566" y2="108" stroke="#e7e5e4" stroke-width="0.75"/>
+<text x="26" y="97.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="700" fill="#1c1917" text-anchor="start">Cassandra</text>
+<text x="136" y="97.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">AP</text>
+<text x="196" y="97.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">PA/EL</text>
+<text x="276" y="97.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">Tunable; defaults favor avail + latency</text>
+<rect x="16" y="108" width="550" height="32" fill="#f5f5f4" opacity="0.45"/>
+<line x1="16" y1="140" x2="566" y2="140" stroke="#e7e5e4" stroke-width="0.75"/>
+<text x="26" y="129.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="700" fill="#1c1917" text-anchor="start">DynamoDB</text>
+<text x="136" y="129.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">AP</text>
+<text x="196" y="129.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">PA/EL</text>
+<text x="276" y="129.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">Eventually consistent reads by default</text>
+<line x1="16" y1="172" x2="566" y2="172" stroke="#e7e5e4" stroke-width="0.75"/>
+<text x="26" y="161.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="700" fill="#1c1917" text-anchor="start">MongoDB</text>
+<text x="136" y="161.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">CP*</text>
+<text x="196" y="161.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">PC/EC</text>
+<text x="276" y="161.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">Default primary reads; tunable</text>
+<rect x="16" y="172" width="550" height="32" fill="#f5f5f4" opacity="0.45"/>
+<line x1="16" y1="204" x2="566" y2="204" stroke="#e7e5e4" stroke-width="0.75"/>
+<text x="26" y="193.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="700" fill="#1c1917" text-anchor="start">HBase</text>
+<text x="136" y="193.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">CP</text>
+<text x="196" y="193.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">PC/EC</text>
+<text x="276" y="193.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">Strong consistency, latency cost</text>
+<line x1="16" y1="236" x2="566" y2="236" stroke="#e7e5e4" stroke-width="0.75"/>
+<text x="26" y="225.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="700" fill="#1c1917" text-anchor="start">Spanner</text>
+<text x="136" y="225.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">CP</text>
+<text x="196" y="225.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">PC/EC</text>
+<text x="276" y="225.0" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="500" fill="#1c1917" text-anchor="start">TrueTime makes global CP feasible</text>
+</svg>

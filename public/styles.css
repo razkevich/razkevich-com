@@ -343,6 +343,19 @@ h1, h2, h3 {
   border-radius: 6px;
   border: 1px solid var(--border);
 }
+.prose figure.diagram {
+  margin: 1.25rem 0 1.5rem;
+  padding: 0;
+}
+.prose figure.diagram img {
+  margin: 0;
+  width: 100%;
+  height: auto;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
 
 .prose .caption, .prose p.caption {
   font-size: 0.8rem;

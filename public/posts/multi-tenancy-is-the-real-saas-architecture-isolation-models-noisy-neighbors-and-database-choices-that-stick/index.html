@@ -31,12 +31,9 @@
 
       <h2>Isolation is the product promise</h2>
       <p>Tenant isolation is the promise that customer A’s data, load, and failure modes do not become customer B’s incident. You can keep that promise at three primary levels — and most mature platforms mix them.</p>
-      <pre><code>Full isolation          Resource-level           Item-level
-─────────────────────   ──────────────────────   ──────────────────────
-Dedicated infra         Shared app, separate     Shared everything;
-DB / compute / net      stores / queues/caches   tenant_id everywhere
-Max security &amp; SLO      Balanced B2B default     Max density / consumer
-Min economic share      Good for similar load    Needs ruthless discipline</code></pre>
+      <figure class="diagram">
+        <img src="images/isolation-models.svg" alt="Full, resource-level, and item-level isolation models" loading="lazy" />
+      </figure>
       <p><strong>Full-stack isolation</strong> is what enterprise contracts and regulated workloads buy: separate databases, often separate clusters, sometimes separate networks. You sacrifice the SaaS cost curve for predictability and audit stories.</p>
       <p><strong>Resource-level isolation</strong> shares the application tier but keeps data stores, caches, and queues apart (or pooled with hard quotas). Most successful B2B SaaS lives here.</p>
       <p><strong>Item-level isolation</strong> shares infrastructure end-to-end; boundaries are application logic and row filters. Highest density, highest blast radius if a query forgets <code>tenant_id</code>.</p>
@@ -45,16 +42,9 @@ Min economic share      Good for similar load    Needs ruthless discipline</code
       <p><strong>Deployment-time</strong> makes boundaries explicit in infra: dedicated DB instance, dedicated namespace, dedicated Redis. Runtime logic stays simple; ops pays for provisioning and drift.</p>
       <p><strong>Runtime</strong> enforces boundaries in code and DB policy — every query carries tenant context, RLS rejects cross-tenant reads, middleware injects the ID. Density goes up; one missing filter becomes a security incident.</p>
       <p>Robust platforms combine them: dedicated stores for enterprise/compliance tenants, runtime isolation for the long tail. That hybrid topology is not fence-sitting — it is how unit economics and enterprise sales coexist.</p>
-      <pre><code>        ┌─────────────────────────────────────────┐
-        │              shared control plane         │
-        └───────────────┬─────────────┬─────────────┘
-                        │             │
-              ┌─────────▼──┐    ┌─────▼──────────┐
-              │ pool: many │    │ silo: acme-corp │
-              │ tenants    │    │ dedicated DB    │
-              │ shared     │    │ dedicated redis │
-              │ schema+RLS │    │ optional cell   │
-              └────────────┘    └─────────────────┘</code></pre>
+      <figure class="diagram">
+        <img src="images/control-plane.svg" alt="Shared control plane with pool and silo data planes" loading="lazy" />
+      </figure>
 
       <h2>Ops: average latency is a lie</h2>
       <p>Single-tenant ops watches CPU and global error rate. Multi-tenant ops adds a second axis: <strong>tenant health</strong>.</p>
@@ -74,13 +64,9 @@ Min economic share      Good for similar load    Needs ruthless discipline</code
 
       <h2>Noisy neighbor: design it out</h2>
       <p>A noisy neighbor is a tenant whose load becomes everyone else’s latency. Prevention is layered:</p>
-      <pre><code>Before                              After
-──────────────────────────────      ──────────────────────────────
-One tenant saturates DB CPU         cgroup / K8s limits + bursts
-Unbounded connection checkout       per-tenant pool quotas
-Pathological report query           complexity / cost gates
-Bulk export on interactive pool     separate bulk queue + QoS
-I/O storms on shared disk           I/O bandwidth QoS</code></pre>
+      <figure class="diagram">
+        <img src="images/noisy-neighbor.svg" alt="Noisy neighbor problems and mitigations" loading="lazy" />
+      </figure>
       <ul>
         <li><strong>CPU/memory limits</strong> with controlled burst into unused capacity.</li>
         <li><strong>I/O QoS</strong> so one analytical scan cannot starve OLTP.</li>
@@ -91,22 +77,16 @@ I/O storms on shared disk           I/O bandwidth QoS</code></pre>
       <p>Bulkheads and rate limits are how you implement these boundaries; tenancy is why those boundaries exist.</p>
 
       <h2>Database patterns that stick</h2>
-      <pre><code>DB-per-tenant          Schema-per-tenant        Shared schema + tenant_id
-─────────────────────  ───────────────────────  ──────────────────────────
-Strong isolation       Medium isolation         Weakest isolation (app+RLS)
-Independent upgrade    Shared server            Max efficiency
-Ops-heavy at N=10k     Extension/search path    One forgotten WHERE = leak
-Enterprise / regulated Early / mid stage        High-volume consumer SaaS</code></pre>
+      <figure class="diagram">
+        <img src="images/db-models.svg" alt="Database-per-tenant, schema-per-tenant, and shared schema models" loading="lazy" />
+      </figure>
       <p><strong>Shared schema</strong> needs belt and suspenders: Postgres RLS (or equivalent) at the DB layer, mandatory tenant context in the connection/session, and tests that fail CI when a query omits the filter. App-only filtering is one tired engineer away from a breach headline.</p>
       <p>The practical destination for many B2B platforms is a <strong>mix</strong>: shared schema for high-volume tenant-scoped tables, dedicated databases (or cells) for enterprise and compliance customers. Start simpler if you must — but design the <code>tenant_id</code> and provisioning API so you can silo a customer later without a rewrite.</p>
 
       <h2>Tenant lifecycle</h2>
-      <pre><code>create → configure → active → tier-change → region-move → offboard
-                                      │                      │
-                                      └─ migrate data/SLO    └─ GDPR:
-                                         without downtime       app DB, backups,
-                                                                logs, derived stores,
-                                                                search indexes, caches</code></pre>
+      <figure class="diagram">
+        <img src="images/tenant-lifecycle.svg" alt="Tenant lifecycle from create to offboard with GDPR purge" loading="lazy" />
+      </figure>
       <p>Provisioning should be automated and template-driven: identity, quotas, default roles, empty data plane. Tier changes and region moves are where naive designs bleed — treat them as first-class state transitions with backpressure and verification, not ticket-driven SQL.</p>
       <p>Offboarding is where multi-tenancy gets honest. Deleting the OLTP row is not enough. Backups, analytics warehouses, search indexes, object storage, and log retention all hold personal data. Build a checklist as code; rehearse it. “We’ll GDPR-delete manually” is not a strategy.</p>
 

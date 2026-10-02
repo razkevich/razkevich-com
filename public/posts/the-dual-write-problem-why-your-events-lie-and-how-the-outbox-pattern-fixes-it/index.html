@@ -34,12 +34,9 @@
     db.insert(orders, order_data)         # Step 1
     broker.publish("OrderPlaced", order)  # Step 2</code></pre>
       <p>Four failure modes, all of which show up in real systems:</p>
-      <pre><code>Case                         Result
-───────────────────────────  ──────────────────────────────────────────────
-DB ok, broker fails          Order saved; fulfillment never starts
-DB fails, broker ok          Event published for an order that doesn't exist
-Crash between 1 and 2        Same as case 1 — silent loss of the event
-Retry without idempotency    Duplicate OrderPlaced → double charge / ship</code></pre>
+      <figure class="diagram">
+        <img src="images/dual-write-failures.svg" alt="Dual-write failure cases and outcomes" loading="lazy" />
+      </figure>
       <p>Support tickets from case 1 look like “order stuck.” Tickets from case 2 look like “ghost shipments.” Neither is fixed by “add a retry” unless you also design for duplicates.</p>
 
       <h2>The outbox: one transaction, two facts</h2>
@@ -53,12 +50,9 @@ Retry without idempotency    Duplicate OrderPlaced → double charge / ship</cod
           '{"id":42,"customer_id":"c-100","total":99.99}');
 COMMIT;</code></pre>
       <p>Either both rows commit or neither does. There is no “order without event” and no “event without order.” A separate <strong>relay</strong> reads unpublished outbox rows and publishes to the broker, then marks them published.</p>
-      <pre><code>App ──BEGIN──► orders + outbox ──COMMIT──► DB
-                                              │
-                         relay polls / CDC ───┘
-                                              │
-                                              ▼
-                                           broker → consumers</code></pre>
+      <figure class="diagram">
+        <img src="images/outbox-architecture.svg" alt="Outbox pattern: atomic DB write then relay to broker" loading="lazy" />
+      </figure>
 
       <h2>Relay option 1: polling</h2>
       <pre><code>def relay():
@@ -75,13 +69,13 @@ COMMIT;</code></pre>
       <p>Boring, debuggable, portable across databases. Latency equals the poll interval — usually fine when “a few seconds late” is within the business SLO. Too-aggressive polling taxes the DB; too-slow polling delays downstream. Start at 1–5 seconds and measure lag as a metric, not a hope.</p>
 
       <h2>Relay option 2: CDC (Debezium et al.)</h2>
-      <pre><code>[ Postgres outbox ] → [ Debezium / logical replication ] → [ Kafka ]</code></pre>
+      <figure class="diagram">
+        <img src="images/cdc-pipeline.svg" alt="CDC pipeline from Postgres outbox to Kafka via Debezium" loading="lazy" />
+      </figure>
       <p>Change Data Capture tails the WAL (or binlog / change stream) and streams inserts into the outbox topic with sub-second latency and no polling load. The cost is operational: replication slots, connector health, schema evolution, and another distributed system in the critical path.</p>
-      <pre><code>                Polling relay              CDC relay
-Latency         poll interval              sub-second
-DB load         periodic SELECT            WAL/readers
-Ops complexity  low                        medium–high
-Sweet spot      modest event volume        high throughput</code></pre>
+      <figure class="diagram">
+        <img src="images/poll-vs-cdc.svg" alt="Polling relay vs CDC relay comparison" loading="lazy" />
+      </figure>
       <p>Prefer polling until throughput or latency SLOs force CDC. Don’t start with Debezium because it looks more “senior” in a design review.</p>
 
       <h2>Semantics: at-least-once, so consumers must be idempotent</h2>
@@ -127,8 +121,9 @@ def handle_event(event):
     except UniqueConstraintViolation:
         pass  # already processed</code></pre>
       <p>Insert into <code>inbox</code> and apply business logic in the <em>same</em> transaction. If the process dies after applying logic but before committing, the inbox row isn’t there either — safe retry. If the message is a duplicate, the unique constraint rejects it and you skip. Outbox + inbox is the reliability loop:</p>
-      <pre><code>producer DB ──outbox──► broker ──► consumer DB (inbox + state)
-   atomic write                      atomic dedupe + apply</code></pre>
+      <figure class="diagram">
+        <img src="images/end-to-end-atomic.svg" alt="End-to-end atomicity with outbox and inbox" loading="lazy" />
+      </figure>
 
       <h2>Ordering, errors, and the unglamorous rest</h2>
       <p>Insert order ≠ delivery order once you have parallel relays or partitioned topics. If order matters for an aggregate, include a sequence number or process per <code>aggregate_id</code> partition key and keep consumers ordered within that key.</p>

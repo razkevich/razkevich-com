@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="234" viewBox="0 0 560 234" role="img">
+  <rect width="560" height="234" fill="#fafaf9" rx="8"/>
+  <text x="20" y="30" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#1c1917" text-anchor="start">Synchronous replication</text>
+<circle cx="34" cy="62" r="12" fill="#0f766e"/>
+<text x="34" y="66" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">1</text>
+<text x="56" y="66" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="500" fill="#1c1917" text-anchor="start">write primary</text>
+<line x1="34" y1="74" x2="34" y2="90" stroke="#ccfbf1" stroke-width="2"/>
+<circle cx="34" cy="102" r="12" fill="#0f766e"/>
+<text x="34" y="106" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">2</text>
+<text x="56" y="106" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="500" fill="#1c1917" text-anchor="start">replicate to secondaries</text>
+<line x1="34" y1="114" x2="34" y2="130" stroke="#ccfbf1" stroke-width="2"/>
+<circle cx="34" cy="142" r="12" fill="#0f766e"/>
+<text x="34" y="146" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">3</text>
+<text x="56" y="146" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="500" fill="#1c1917" text-anchor="start">wait for all (or quorum) acks</text>
+<line x1="34" y1="154" x2="34" y2="170" stroke="#ccfbf1" stroke-width="2"/>
+<circle cx="34" cy="182" r="12" fill="#0f766e"/>
+<text x="34" y="186" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">4</text>
+<text x="56" y="186" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="500" fill="#1c1917" text-anchor="start">then acknowledge the client</text>
+</svg>
